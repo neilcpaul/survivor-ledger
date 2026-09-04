@@ -726,7 +726,7 @@ table.grid tr.expandable:hover th {
 
 @media (max-width: 920px) {
   .rail {
-    overflow-x: visible;
+    overflow: visible;
     position: relative;
   }
   .rail-menu {
