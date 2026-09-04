@@ -47,6 +47,8 @@ async function fetchGames(): Promise<Game[]> {
   return (data ?? []) as Game[];
 }
 
+// sync_state is readable by signed-in users only (it holds internal sync errors),
+// so guests must not request it — an anon request would 401 on every poll.
 async function fetchSyncState() {
   const { data } = await supabase
     .from("sync_state")
@@ -55,6 +57,7 @@ async function fetchSyncState() {
     .maybeSingle();
   return data ?? null;
 }
+
 
 
 type Ctx = {
