@@ -85,8 +85,10 @@ type Ctx = {
   entryId: string | null;
   selectEntry: (id: string) => void;
   createEntry: (name: string) => Promise<void>;
+  renameEntry: (id: string, name: string) => Promise<void>;
+  deleteEntry: (id: string) => Promise<void>;
   signOut: () => Promise<void>;
-  saveState: "guest" | "saving" | "synced" | "error";
+  saveState: "guest" | "saving" | "synced" | "error" | "no-entry";
   entryName: string | null;
 };
 
@@ -381,8 +383,10 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     entryId,
     selectEntry: setEntryId,
     createEntry,
+    renameEntry,
+    deleteEntry,
     signOut,
-    saveState: session?.user ? saveState : "guest",
+    saveState: !session?.user ? "guest" : entryId ? saveState : "no-entry",
     entryName: entries.find((e) => e.id === entryId)?.name ?? null,
   };
 
