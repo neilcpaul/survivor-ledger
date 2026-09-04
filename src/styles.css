@@ -553,7 +553,6 @@ button.badge:disabled {
     white-space: nowrap;
   }
   .topbar {
-    grid-template-columns: 1fr;
     gap: 10px;
   }
   .stat-grid {
