@@ -122,7 +122,7 @@ function Heatmap() {
                         const blockedByTeam = usedWeek != null && usedWeek !== w;
                         if (!slot)
                           return (
-                            <td key={w} style={{ textAlign: "center", color: "var(--ink-3)" }}>
+                            <td key={w} style={{ textAlign: "center", color: "var(--ink-faint)" }}>
                               —
                             </td>
                           );

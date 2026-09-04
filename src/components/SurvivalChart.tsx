@@ -61,16 +61,16 @@ export function SurvivalChart({
               x2={W - PAD.right}
               y1={y(t)}
               y2={y(t)}
-              stroke="var(--grid)"
+              stroke="var(--border)"
               strokeWidth={1}
             />
-            <text x={PAD.left - 8} y={y(t) + 4} textAnchor="end" fontSize={10} fill="var(--ink-3)">
+            <text x={PAD.left - 8} y={y(t) + 4} textAnchor="end" fontSize={10} fill="var(--ink-faint)">
               {t >= 0.01 ? `${(t * 100).toFixed(0)}%` : `${(t * 100).toFixed(1)}%`}
             </text>
           </g>
         ))}
         {[1, 5, 9, 13, 18].map((w) => (
-          <text key={w} x={x(w)} y={H - 10} textAnchor="middle" fontSize={10} fill="var(--ink-3)">
+          <text key={w} x={x(w)} y={H - 10} textAnchor="middle" fontSize={10} fill="var(--ink-faint)">
             W{w}
           </text>
         ))}
@@ -80,7 +80,7 @@ export function SurvivalChart({
             x2={x(currentWeek)}
             y1={PAD.top}
             y2={H - PAD.bottom}
-            stroke="var(--ink-3)"
+            stroke="var(--ink-faint)"
             strokeDasharray="3 4"
             strokeWidth={1}
           />
