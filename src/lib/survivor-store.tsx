@@ -180,24 +180,17 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   });
   const entries = useMemo(() => entriesQ.data ?? [], [entriesQ.data]);
 
+  // No auto-created placeholder entry: the user names their first entry
+  // explicitly from the topbar switcher.
   useEffect(() => {
     if (!session?.user) return;
-    if (entriesQ.isSuccess && entries.length === 0) {
-      supabase
-        .from("entries")
-        .insert({ user_id: session.user.id, name: "My Entry" })
-        .select("id, name, created_at")
-        .single()
-        .then(({ data }) => {
-          if (data) {
-            qc.setQueryData(["entries", session.user.id], [data]);
-            setEntryId(data.id);
-          }
-        });
-    } else if (entries.length && !entryId) {
+    if (entries.length && (!entryId || !entries.some((e) => e.id === entryId))) {
       setEntryId(entries[0]!.id);
+    } else if (!entries.length && entryId) {
+      setEntryId(null);
     }
-  }, [entriesQ.isSuccess, entries, entryId, session?.user?.id]);
+  }, [entries, entryId, session?.user?.id]);
+
 
   /* ------------- seed a starting plan from the data ------------- */
   useEffect(() => {
