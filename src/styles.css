@@ -683,6 +683,7 @@ table.grid tr.expandable:hover th {
   flex-direction: column;
   gap: 4px;
   margin: 6px 0 12px;
+  min-width: 0;
 }
 
 .detail-row {
@@ -690,11 +691,32 @@ table.grid tr.expandable:hover th {
   align-items: center;
   gap: 8px;
   font-size: 12px;
+  min-width: 0;
+}
+
+.detail-row > * {
+  min-width: 0;
 }
 
 .detail-row .num {
   color: var(--ink-faint);
   min-width: 26px;
+}
+
+@media (max-width: 640px) {
+  .detail-row.injury-row {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .detail-row.injury-row .player-name {
+    flex: 1 1 auto;
+  }
+
+  .detail-row.injury-row .status-wrap {
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
 }
 
 /* ---------- rail burger menu ---------- */
