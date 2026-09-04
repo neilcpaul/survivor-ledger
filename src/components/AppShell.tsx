@@ -280,6 +280,146 @@ function AuthWidget() {
   );
 }
 
+function RailNav({ pathname }: { pathname: string }) {
+  const railRef = useRef<HTMLElement | null>(null);
+  const brandRef = useRef<HTMLDivElement | null>(null);
+  const measureRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [visibleCount, setVisibleCount] = useState(NAV.length);
+  const [open, setOpen] = useState(false);
+
+  // Measure each nav item once from a hidden mirror list, then work out how
+  // many fit beside the brand on the horizontal (narrow-screen) rail.
+  useEffect(() => {
+    function recalc() {
+      const rail = railRef.current;
+      const measure = measureRef.current;
+      if (!rail || !measure) return;
+      const horizontal = window.matchMedia("(max-width: 920px)").matches;
+      if (!horizontal) {
+        setVisibleCount(NAV.length);
+        return;
+      }
+      const widths = Array.from(measure.children).map((c) => (c as HTMLElement).offsetWidth);
+      const styles = getComputedStyle(rail);
+      const padding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+      const BURGER = 46; // burger button + gap
+      const GAP = 16; // rail gap between brand and list
+      let available =
+        rail.clientWidth - padding - (brandRef.current?.offsetWidth ?? 0) - GAP - BURGER;
+      let fit = 0;
+      for (const w of widths) {
+        const next = w + (fit > 0 ? 4 : 0);
+        if (available - next < 0) break;
+        available -= next;
+        fit += 1;
+      }
+      setVisibleCount(fit);
+    }
+    recalc();
+    window.addEventListener("resize", recalc);
+    const ro = new ResizeObserver(recalc);
+    if (railRef.current) ro.observe(railRef.current);
+    return () => {
+      window.removeEventListener("resize", recalc);
+      ro.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (!menuRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const overflow = NAV.slice(visibleCount);
+  const visible = NAV.slice(0, visibleCount);
+
+  return (
+    <nav className="rail" aria-label="Sections" ref={railRef}>
+      {overflow.length ? (
+        <div className="popover-wrap rail-menu" ref={menuRef}>
+          <button
+            className="btn burger"
+            aria-label="More sections"
+            aria-haspopup="menu"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+          >
+            <span className="burger-bars" aria-hidden="true" />
+          </button>
+          {open ? (
+            <div className="popover rail-popover" role="menu" aria-label="More sections">
+              <div className="label" style={{ marginBottom: 6 }}>
+                Sections
+              </div>
+              {overflow.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  role="menuitem"
+                  aria-selected={pathname === item.to}
+                  className="nav-item"
+                  onClick={() => setOpen(false)}
+                >
+                  <span className="nav-dot" aria-hidden="true" />
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="brand" ref={brandRef}>
+        <span className="brand-mark" aria-hidden="true">
+          SL
+        </span>
+        <span className="brand-name">
+          Survivor
+          <br />
+          Ledger
+        </span>
+      </div>
+
+      <div className="nav-list" role="tablist" aria-orientation="vertical">
+        {visible.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            role="tab"
+            aria-selected={pathname === item.to}
+            className="nav-item"
+          >
+            <span className="nav-dot" aria-hidden="true" />
+            {item.label}
+          </Link>
+        ))}
+      </div>
+
+      {/* hidden mirror used only to measure natural item widths */}
+      <div className="nav-measure" aria-hidden="true" ref={measureRef}>
+        {NAV.map((item) => (
+          <span key={item.to} className="nav-item">
+            <span className="nav-dot" />
+            {item.label}
+          </span>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
 
 export function AppShell({ title, children }: { title: string; children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
