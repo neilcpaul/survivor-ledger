@@ -288,32 +288,8 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
 
   return (
     <div className="shell">
-      <nav className="rail" aria-label="Sections">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            SL
-          </span>
-          <span className="brand-name">
-            Survivor
-            <br />
-            Ledger
-          </span>
-        </div>
-        <div className="nav-list" role="tablist" aria-orientation="vertical">
-          {NAV.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              role="tab"
-              aria-selected={pathname === item.to}
-              className="nav-item"
-            >
-              <span className="nav-dot" aria-hidden="true" />
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      </nav>
+      <RailNav pathname={pathname} />
+
 
       <div className="main">
         <header className="topbar">
