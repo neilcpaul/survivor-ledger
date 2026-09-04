@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ComparatorRouteImport } from './routes/comparator'
 import { Route as HeatmapRouteImport } from './routes/heatmap'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as ApiPublicEspnSyncRouteImport } from './routes/api/public/espn-sync'
@@ -23,6 +24,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComparatorRoute = ComparatorRouteImport.update({
+  id: '/comparator',
+  path: '/comparator',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HeatmapRoute = HeatmapRouteImport.update({
@@ -44,6 +50,7 @@ const ApiPublicEspnSyncRoute = ApiPublicEspnSyncRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/comparator': typeof ComparatorRoute
   '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/comparator': typeof ComparatorRoute
   '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
@@ -59,19 +67,33 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/comparator': typeof ComparatorRoute
   '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/heatmap' | '/inventory' | '/api/public/espn-sync'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/comparator'
+    | '/heatmap'
+    | '/inventory'
+    | '/api/public/espn-sync'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/heatmap' | '/inventory' | '/api/public/espn-sync'
+  to:
+    | '/'
+    | '/auth'
+    | '/comparator'
+    | '/heatmap'
+    | '/inventory'
+    | '/api/public/espn-sync'
   id:
     | '__root__'
     | '/'
     | '/auth'
+    | '/comparator'
     | '/heatmap'
     | '/inventory'
     | '/api/public/espn-sync'
@@ -80,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  ComparatorRoute: typeof ComparatorRoute
   HeatmapRoute: typeof HeatmapRoute
   InventoryRoute: typeof InventoryRoute
   ApiPublicEspnSyncRoute: typeof ApiPublicEspnSyncRoute
@@ -99,6 +122,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/comparator': {
+      id: '/comparator'
+      path: '/comparator'
+      fullPath: '/comparator'
+      preLoaderRoute: typeof ComparatorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/heatmap': {
@@ -128,6 +158,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  ComparatorRoute: ComparatorRoute,
   HeatmapRoute: HeatmapRoute,
   InventoryRoute: InventoryRoute,
   ApiPublicEspnSyncRoute: ApiPublicEspnSyncRoute,
