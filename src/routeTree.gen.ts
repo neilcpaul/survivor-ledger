@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ComparatorRouteImport } from './routes/comparator'
+import { Route as FixturesRouteImport } from './routes/fixtures'
 import { Route as HeatmapRouteImport } from './routes/heatmap'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as ApiPublicEspnSyncRouteImport } from './routes/api/public/espn-sync'
@@ -29,6 +30,11 @@ const AuthRoute = AuthRouteImport.update({
 const ComparatorRoute = ComparatorRouteImport.update({
   id: '/comparator',
   path: '/comparator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FixturesRoute = FixturesRouteImport.update({
+  id: '/fixtures',
+  path: '/fixtures',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HeatmapRoute = HeatmapRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/comparator': typeof ComparatorRoute
+  '/fixtures': typeof FixturesRoute
   '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/comparator': typeof ComparatorRoute
+  '/fixtures': typeof FixturesRoute
   '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/comparator': typeof ComparatorRoute
+  '/fixtures': typeof FixturesRoute
   '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/comparator'
+    | '/fixtures'
     | '/heatmap'
     | '/inventory'
     | '/api/public/espn-sync'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/comparator'
+    | '/fixtures'
     | '/heatmap'
     | '/inventory'
     | '/api/public/espn-sync'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/comparator'
+    | '/fixtures'
     | '/heatmap'
     | '/inventory'
     | '/api/public/espn-sync'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ComparatorRoute: typeof ComparatorRoute
+  FixturesRoute: typeof FixturesRoute
   HeatmapRoute: typeof HeatmapRoute
   InventoryRoute: typeof InventoryRoute
   ApiPublicEspnSyncRoute: typeof ApiPublicEspnSyncRoute
@@ -129,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/comparator'
       fullPath: '/comparator'
       preLoaderRoute: typeof ComparatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fixtures': {
+      id: '/fixtures'
+      path: '/fixtures'
+      fullPath: '/fixtures'
+      preLoaderRoute: typeof FixturesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/heatmap': {
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ComparatorRoute: ComparatorRoute,
+  FixturesRoute: FixturesRoute,
   HeatmapRoute: HeatmapRoute,
   InventoryRoute: InventoryRoute,
   ApiPublicEspnSyncRoute: ApiPublicEspnSyncRoute,
