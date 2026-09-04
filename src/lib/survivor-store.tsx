@@ -298,21 +298,56 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     qc.invalidateQueries({ queryKey: ["sync-state"] });
   }, [canRefresh, qc]);
 
+  const entriesKey = useMemo(
+    () => ["entries", session?.user?.id ?? "anon"] as const,
+    [session?.user?.id],
+  );
+
   const createEntry = useCallback(
     async (name: string) => {
-      if (!session?.user) return;
+      const clean = name.trim();
+      if (!session?.user || !clean) return;
       const { data } = await supabase
         .from("entries")
-        .insert({ user_id: session.user.id, name })
+        .insert({ user_id: session.user.id, name: clean })
         .select("id, name, created_at")
         .single();
       if (data) {
-        qc.invalidateQueries({ queryKey: ["entries", session.user.id] });
+        qc.setQueryData<Entry[]>(entriesKey, (prev) => [...(prev ?? []), data as Entry]);
         setEntryId(data.id);
+        qc.invalidateQueries({ queryKey: entriesKey });
       }
     },
-    [session?.user?.id, qc],
+    [session?.user?.id, qc, entriesKey],
   );
+
+  const renameEntry = useCallback(
+    async (id: string, name: string) => {
+      const clean = name.trim();
+      if (!session?.user || !clean) return;
+      qc.setQueryData<Entry[]>(entriesKey, (prev) =>
+        (prev ?? []).map((e) => (e.id === id ? { ...e, name: clean } : e)),
+      );
+      const { error } = await supabase.from("entries").update({ name: clean }).eq("id", id);
+      if (error) qc.invalidateQueries({ queryKey: entriesKey });
+    },
+    [session?.user?.id, qc, entriesKey],
+  );
+
+  const deleteEntry = useCallback(
+    async (id: string) => {
+      if (!session?.user) return;
+      const remaining = entries.filter((e) => e.id !== id);
+      if (!remaining.length) return; // never delete the last entry
+      qc.setQueryData<Entry[]>(entriesKey, remaining);
+      if (entryId === id) setEntryId(remaining[0]!.id);
+      await supabase.from("picks").delete().eq("entry_id", id);
+      const { error } = await supabase.from("entries").delete().eq("id", id);
+      if (error) qc.invalidateQueries({ queryKey: entriesKey });
+    },
+    [session?.user?.id, qc, entriesKey, entries, entryId],
+  );
+
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
