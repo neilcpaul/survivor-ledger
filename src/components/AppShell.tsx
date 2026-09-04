@@ -285,7 +285,7 @@ function RailNav({ pathname }: { pathname: string }) {
   const brandRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const [visibleCount, setVisibleCount] = useState(NAV.length);
+  const [visibleCount, setVisibleCount] = useState<number>(NAV.length);
   const [open, setOpen] = useState(false);
 
   // Measure each nav item once from a hidden mirror list, then work out how

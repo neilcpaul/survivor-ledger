@@ -672,3 +672,68 @@ table.grid tr.expandable:hover th {
   color: var(--ink-faint);
   min-width: 26px;
 }
+
+/* ---------- rail burger menu ---------- */
+
+.nav-measure {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  display: flex;
+  gap: 4px;
+  top: -9999px;
+  left: -9999px;
+}
+
+.nav-measure .nav-item {
+  width: auto;
+  white-space: nowrap;
+}
+
+.rail-menu {
+  display: none;
+}
+
+.burger {
+  padding: 7px 9px;
+  line-height: 0;
+}
+
+.burger-bars,
+.burger-bars::before,
+.burger-bars::after {
+  display: block;
+  width: 15px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: var(--ink-muted);
+  content: "";
+}
+
+.burger-bars::before {
+  transform: translateY(-5px);
+}
+
+.burger-bars::after {
+  transform: translateY(3.5px);
+}
+
+.rail-popover {
+  left: 0;
+  right: auto;
+  width: 210px;
+}
+
+@media (max-width: 920px) {
+  .rail {
+    overflow-x: visible;
+    position: relative;
+  }
+  .rail-menu {
+    display: block;
+    flex-shrink: 0;
+  }
+  .nav-list {
+    overflow: hidden;
+  }
+}
