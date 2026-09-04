@@ -50,11 +50,12 @@ async function fetchGames(): Promise<Game[]> {
 async function fetchSyncState() {
   const { data } = await supabase
     .from("sync_state")
-    .select("last_success_at, last_error")
+    .select("last_success_at")
     .eq("id", "espn")
     .maybeSingle();
   return data ?? null;
 }
+
 
 type Ctx = {
   teams: Team[];
