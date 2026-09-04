@@ -128,15 +128,22 @@ function TeamPanel({
         {injuries.length === 0 ? (
           <span className="sub">No reported injuries.</span>
         ) : (
-          injuries.map((i) => (
-            <div key={i.id} className="detail-row">
-              <span style={{ minWidth: 34 }} className="sub">
-                {i.position ?? "—"}
-              </span>
-              <span style={{ flex: 1, minWidth: 0 }}>{i.player_name ?? "Unknown"}</span>
-              <StatusPill status={i.status} />
-            </div>
-          ))
+            injuries.map((i) => (
+              <div key={i.id} className="detail-row injury-row">
+                <span style={{ minWidth: 34 }} className="sub">
+                  {i.position ?? "—"}
+                </span>
+                <span
+                  className="player-name"
+                  style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                >
+                  {i.player_name ?? "Unknown"}
+                </span>
+                <span className="status-wrap" style={{ flexShrink: 0, marginLeft: "auto" }}>
+                  <StatusPill status={i.status} />
+                </span>
+              </div>
+            ))
         )}
       </div>
 
