@@ -92,7 +92,13 @@ type Ctx = {
   entryName: string | null;
 };
 
-const SurvivorContext = createContext<Ctx | null>(null);
+// Cached on globalThis so a hot-module reload of this file reuses the same
+// context object; otherwise __root's provider keeps the old context while
+// re-rendered pages read a brand new one and throw "must be used inside".
+const globalStore = globalThis as typeof globalThis & {
+  __survivorContext?: React.Context<Ctx | null>;
+};
+const SurvivorContext = (globalStore.__survivorContext ??= createContext<Ctx | null>(null));
 
 export function SurvivorProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
