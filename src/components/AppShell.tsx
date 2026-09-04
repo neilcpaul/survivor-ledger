@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useSurvivor } from "@/lib/survivor-store";
 
 const NAV = [
@@ -20,20 +20,214 @@ function agoLabel(iso: string | null): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function EntrySwitcher() {
+  const { entries, entryId, entryName, selectEntry, createEntry, renameEntry, deleteEntry } =
+    useSurvivor();
+  const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      setEditingId(null);
+      setConfirmId(null);
+      setAdding(false);
+      setNewName("");
+    }
+  }, [open]);
+
+  const only = entries.length <= 1;
+
+  return (
+    <div className="popover-wrap" ref={wrapRef}>
+      <button
+        className="btn"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {entryName ?? "No entry yet"}
+        <span aria-hidden="true" style={{ marginLeft: 6 }}>
+          ▾
+        </span>
+      </button>
+
+      {open ? (
+        <div className="popover card" role="menu" aria-label="League entries">
+          <div className="label" style={{ marginBottom: 8 }}>
+            Your entries
+          </div>
+
+          {entries.length === 0 ? (
+            <div className="sub" style={{ padding: "4px 0 8px" }}>
+              No entries yet — create one to save your picks.
+            </div>
+          ) : null}
+
+          {entries.map((entry) => {
+            const active = entry.id === entryId;
+            if (confirmId === entry.id) {
+              return (
+                <div key={entry.id} className="popover-row" style={{ flexWrap: "wrap" }}>
+                  <span className="sub" style={{ flex: 1, minWidth: 0 }}>
+                    Delete “{entry.name}”? This removes all its picks.
+                  </span>
+                  <button
+                    className="btn"
+                    style={{ color: "var(--critical)", borderColor: "var(--critical)" }}
+                    onClick={() => {
+                      void deleteEntry(entry.id);
+                      setConfirmId(null);
+                    }}
+                  >
+                    Confirm
+                  </button>
+                  <button className="btn" onClick={() => setConfirmId(null)}>
+                    Cancel
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <div key={entry.id} className="popover-row">
+                {editingId === entry.id ? (
+                  <input
+                    className="control"
+                    style={{ flex: 1, minWidth: 0 }}
+                    autoFocus
+                    value={editValue}
+                    aria-label={`Rename ${entry.name}`}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onBlur={() => {
+                      void renameEntry(entry.id, editValue);
+                      setEditingId(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        void renameEntry(entry.id, editValue);
+                        setEditingId(null);
+                      } else if (e.key === "Escape") {
+                        e.stopPropagation();
+                        setEditingId(null);
+                      }
+                    }}
+                  />
+                ) : (
+                  <>
+                    <button
+                      className="popover-name"
+                      onClick={() => {
+                        selectEntry(entry.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <span
+                        className="dot"
+                        style={{ background: active ? "var(--accent)" : "transparent" }}
+                        aria-hidden="true"
+                      />
+                      <span className="truncate">{entry.name}</span>
+                    </button>
+                    <button
+                      className="icon-btn"
+                      title="Rename entry"
+                      aria-label={`Rename ${entry.name}`}
+                      onClick={() => {
+                        setEditValue(entry.name);
+                        setEditingId(entry.id);
+                      }}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      className="icon-btn"
+                      title={only ? "Can't delete your only entry" : "Delete entry"}
+                      aria-label={
+                        only ? "Can't delete your only entry" : `Delete ${entry.name}`
+                      }
+                      disabled={only}
+                      onClick={() => setConfirmId(entry.id)}
+                    >
+                      🗑️
+                    </button>
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {only && entries.length === 1 ? (
+            <div className="sub" style={{ padding: "2px 4px 6px" }}>
+              Can't delete your only entry
+            </div>
+          ) : null}
+
+          <div className="popover-sep" />
+
+          {adding ? (
+            <form
+              className="popover-row"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newName.trim()) return;
+                void createEntry(newName);
+                setNewName("");
+                setAdding(false);
+                setOpen(false);
+              }}
+            >
+              <input
+                className="control"
+                style={{ flex: 1, minWidth: 0 }}
+                autoFocus
+                placeholder="Entry name, e.g. Office Pool"
+                aria-label="New entry name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.stopPropagation();
+                    setAdding(false);
+                  }
+                }}
+              />
+              <button className="btn primary" type="submit" disabled={!newName.trim()}>
+                Add
+              </button>
+            </form>
+          ) : (
+            <button className="popover-name" onClick={() => setAdding(true)}>
+              + New entry
+            </button>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function AuthWidget() {
-  const {
-    session,
-    displayName,
-    entries,
-    entryId,
-    selectEntry,
-    createEntry,
-    signOut,
-    saveState,
-    entryName,
-  } = useSurvivor();
-  const [creating, setCreating] = useState(false);
-  const [name, setName] = useState("");
+  const { session, displayName, signOut, saveState, entryName } = useSurvivor();
 
   if (!session?.user) {
     return (
@@ -60,7 +254,9 @@ function AuthWidget() {
                 ? "var(--accent)"
                 : saveState === "error"
                   ? "var(--critical)"
-                  : "var(--caution)",
+                  : saveState === "no-entry"
+                    ? "var(--neutral)"
+                    : "var(--caution)",
           }}
           aria-hidden="true"
         />
@@ -70,62 +266,20 @@ function AuthWidget() {
             ? "Saving…"
             : saveState === "error"
               ? "Save failed"
-              : "Loading entry…"}
+              : saveState === "no-entry"
+                ? "No entry — picks not saved"
+                : "Loading entry…"}
       </span>
 
-      {creating ? (
-        <form
-          className="flex items-center gap-2"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            if (!name.trim()) return;
-            await createEntry(name.trim());
-            setName("");
-            setCreating(false);
-          }}
-        >
-          <input
-            className="control"
-            placeholder="Office Pool"
-            value={name}
-            autoFocus
-            onChange={(e) => setName(e.target.value)}
-            aria-label="New entry name"
-          />
-          <button className="btn primary" type="submit">
-            Create
-          </button>
-          <button className="btn" type="button" onClick={() => setCreating(false)}>
-            Cancel
-          </button>
-        </form>
-      ) : (
-        <>
-          <select
-            className="control"
-            aria-label="Select league entry"
-            value={entryId ?? ""}
-            onChange={(e) => {
-              if (e.target.value === "__new") setCreating(true);
-              else selectEntry(e.target.value);
-            }}
-          >
-            {entries.map((entry) => (
-              <option key={entry.id} value={entry.id}>
-                {entry.name}
-              </option>
-            ))}
-            <option value="__new">+ New entry…</option>
-          </select>
-          <span className="sub">{displayName}</span>
-          <button className="btn" onClick={() => void signOut()}>
-            Sign out
-          </button>
-        </>
-      )}
+      <EntrySwitcher />
+      <span className="sub">{displayName}</span>
+      <button className="btn" onClick={() => void signOut()}>
+        Sign out
+      </button>
     </div>
   );
 }
+
 
 export function AppShell({ title, children }: { title: string; children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });

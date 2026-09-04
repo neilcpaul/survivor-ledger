@@ -47,6 +47,8 @@ async function fetchGames(): Promise<Game[]> {
   return (data ?? []) as Game[];
 }
 
+// sync_state is readable by signed-in users only (it holds internal sync errors),
+// so guests must not request it — an anon request would 401 on every poll.
 async function fetchSyncState() {
   const { data } = await supabase
     .from("sync_state")
@@ -55,6 +57,7 @@ async function fetchSyncState() {
     .maybeSingle();
   return data ?? null;
 }
+
 
 
 type Ctx = {
@@ -82,8 +85,10 @@ type Ctx = {
   entryId: string | null;
   selectEntry: (id: string) => void;
   createEntry: (name: string) => Promise<void>;
+  renameEntry: (id: string, name: string) => Promise<void>;
+  deleteEntry: (id: string) => Promise<void>;
   signOut: () => Promise<void>;
-  saveState: "guest" | "saving" | "synced" | "error";
+  saveState: "guest" | "saving" | "synced" | "error" | "no-entry";
   entryName: string | null;
 };
 
@@ -142,8 +147,10 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   const syncQ = useQuery({
     queryKey: ["sync-state"],
     queryFn: fetchSyncState,
+    enabled: !!session?.user,
     refetchInterval: 60_000,
   });
+
 
   const teams = useMemo(() => teamsQ.data ?? [], [teamsQ.data]);
   const games = useMemo(() => gamesQ.data ?? [], [gamesQ.data]);
@@ -175,24 +182,17 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   });
   const entries = useMemo(() => entriesQ.data ?? [], [entriesQ.data]);
 
+  // No auto-created placeholder entry: the user names their first entry
+  // explicitly from the topbar switcher.
   useEffect(() => {
     if (!session?.user) return;
-    if (entriesQ.isSuccess && entries.length === 0) {
-      supabase
-        .from("entries")
-        .insert({ user_id: session.user.id, name: "My Entry" })
-        .select("id, name, created_at")
-        .single()
-        .then(({ data }) => {
-          if (data) {
-            qc.setQueryData(["entries", session.user.id], [data]);
-            setEntryId(data.id);
-          }
-        });
-    } else if (entries.length && !entryId) {
+    if (entries.length && (!entryId || !entries.some((e) => e.id === entryId))) {
       setEntryId(entries[0]!.id);
+    } else if (!entries.length && entryId) {
+      setEntryId(null);
     }
-  }, [entriesQ.isSuccess, entries, entryId, session?.user?.id]);
+  }, [entries, entryId, session?.user?.id]);
+
 
   /* ------------- seed a starting plan from the data ------------- */
   useEffect(() => {
@@ -269,9 +269,17 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   }, [plan, originalPlan]);
 
   /* ---------------- refresh ---------------- */
-  const lastSyncAt = syncQ.data?.last_success_at ?? null;
+  // Guests can't read sync_state (auth-only), so fall back to the freshest
+  // odds timestamp on the publicly readable games rows.
+  const gamesUpdatedAt = useMemo(() => {
+    let latest: string | null = null;
+    for (const g of games) if (g.updated_at && (!latest || g.updated_at > latest)) latest = g.updated_at;
+    return latest;
+  }, [games]);
+  const lastSyncAt = syncQ.data?.last_success_at ?? gamesUpdatedAt;
   const syncFailed = lastSyncAt ? now - new Date(lastSyncAt).getTime() > 24 * 60 * 60 * 1000 : false;
   const staleEnough = lastSyncAt ? now - new Date(lastSyncAt).getTime() > REFRESH_WINDOW_MS : true;
+
   const canRefresh = staleEnough && now - lastRefreshClick > REFRESH_WINDOW_MS && !refreshing;
 
   const refresh = useCallback(async () => {
@@ -292,21 +300,56 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     qc.invalidateQueries({ queryKey: ["sync-state"] });
   }, [canRefresh, qc]);
 
+  const entriesKey = useMemo(
+    () => ["entries", session?.user?.id ?? "anon"] as const,
+    [session?.user?.id],
+  );
+
   const createEntry = useCallback(
     async (name: string) => {
-      if (!session?.user) return;
+      const clean = name.trim();
+      if (!session?.user || !clean) return;
       const { data } = await supabase
         .from("entries")
-        .insert({ user_id: session.user.id, name })
+        .insert({ user_id: session.user.id, name: clean })
         .select("id, name, created_at")
         .single();
       if (data) {
-        qc.invalidateQueries({ queryKey: ["entries", session.user.id] });
+        qc.setQueryData<Entry[]>(entriesKey, (prev) => [...(prev ?? []), data as Entry]);
         setEntryId(data.id);
+        qc.invalidateQueries({ queryKey: entriesKey });
       }
     },
-    [session?.user?.id, qc],
+    [session?.user?.id, qc, entriesKey],
   );
+
+  const renameEntry = useCallback(
+    async (id: string, name: string) => {
+      const clean = name.trim();
+      if (!session?.user || !clean) return;
+      qc.setQueryData<Entry[]>(entriesKey, (prev) =>
+        (prev ?? []).map((e) => (e.id === id ? { ...e, name: clean } : e)),
+      );
+      const { error } = await supabase.from("entries").update({ name: clean }).eq("id", id);
+      if (error) qc.invalidateQueries({ queryKey: entriesKey });
+    },
+    [session?.user?.id, qc, entriesKey],
+  );
+
+  const deleteEntry = useCallback(
+    async (id: string) => {
+      if (!session?.user) return;
+      const remaining = entries.filter((e) => e.id !== id);
+      if (!remaining.length) return; // never delete the last entry
+      qc.setQueryData<Entry[]>(entriesKey, remaining);
+      if (entryId === id) setEntryId(remaining[0]!.id);
+      await supabase.from("picks").delete().eq("entry_id", id);
+      const { error } = await supabase.from("entries").delete().eq("id", id);
+      if (error) qc.invalidateQueries({ queryKey: entriesKey });
+    },
+    [session?.user?.id, qc, entriesKey, entries, entryId],
+  );
+
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
@@ -340,8 +383,10 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     entryId,
     selectEntry: setEntryId,
     createEntry,
+    renameEntry,
+    deleteEntry,
     signOut,
-    saveState: session?.user ? saveState : "guest",
+    saveState: !session?.user ? "guest" : entryId ? saveState : "no-entry",
     entryName: entries.find((e) => e.id === entryId)?.name ?? null,
   };
 

@@ -89,3 +89,20 @@ export function TeamChipLabel({
     </span>
   );
 }
+
+export function StatusPill({ status }: { status: string | null | undefined }) {
+  const s = (status ?? "").toLowerCase();
+  const tier = s.includes("out") || s.includes("injured reserve") || s.includes("suspend")
+    ? "critical"
+    : s.includes("doubtful") || s.includes("questionable")
+      ? "caution"
+      : s.includes("probable") || s.includes("active")
+        ? "good"
+        : "neutral";
+  return (
+    <span className={`pill ${tier}`}>
+      <span className="dot" style={{ background: "currentColor" }} aria-hidden="true" />
+      {status ?? "Unknown"}
+    </span>
+  );
+}
