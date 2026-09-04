@@ -359,7 +359,7 @@ function RailNav({ pathname }: { pathname: string }) {
             <span className="burger-bars" aria-hidden="true" />
           </button>
           {open ? (
-            <div className="popover rail-popover" role="menu" aria-label="More sections">
+            <div className="popover card rail-popover" role="menu" aria-label="More sections">
               <div className="label" style={{ marginBottom: 6 }}>
                 Sections
               </div>
