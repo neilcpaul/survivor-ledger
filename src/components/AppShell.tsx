@@ -233,10 +233,6 @@ function AuthWidget() {
   if (!session?.user) {
     return (
       <div className="flex items-center gap-2">
-        <span className="badge">
-          <span className="dot" style={{ background: "var(--neutral)" }} aria-hidden="true" />
-          Not saved · local to this device
-        </span>
         <Link to="/auth" className="btn primary">
           Sign in
         </Link>
@@ -262,7 +258,7 @@ function AuthWidget() {
           aria-hidden="true"
         />
         {saveState === "synced"
-          ? `Synced to ${entryName ?? "entry"}`
+          ? "Saved"
           : saveState === "saving"
             ? "Saving…"
             : saveState === "error"
