@@ -516,9 +516,20 @@ table.grid tbody tr:last-child td {
   .brand {
     margin-bottom: 0;
   }
+  .brand-name {
+    white-space: nowrap;
+  }
   .nav-list {
     flex-direction: row;
     gap: 4px;
+    flex-wrap: nowrap;
+  }
+  .nav-item {
+    white-space: nowrap;
+  }
+  .topbar {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
   .stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
