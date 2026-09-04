@@ -719,8 +719,8 @@ table.grid tr.expandable:hover th {
 }
 
 .rail-popover {
-  left: 0;
-  right: auto;
+  left: auto;
+  right: 0;
   width: 210px;
 }
 
