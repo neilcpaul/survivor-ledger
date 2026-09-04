@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as HeatmapRouteImport } from './routes/heatmap'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as ApiPublicEspnSyncRouteImport } from './routes/api/public/espn-sync'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HeatmapRoute = HeatmapRouteImport.update({
+  id: '/heatmap',
+  path: '/heatmap',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InventoryRoute = InventoryRouteImport.update({
@@ -38,12 +44,14 @@ const ApiPublicEspnSyncRoute = ApiPublicEspnSyncRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
 }
@@ -51,20 +59,28 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/inventory' | '/api/public/espn-sync'
+  fullPaths: '/' | '/auth' | '/heatmap' | '/inventory' | '/api/public/espn-sync'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/inventory' | '/api/public/espn-sync'
-  id: '__root__' | '/' | '/auth' | '/inventory' | '/api/public/espn-sync'
+  to: '/' | '/auth' | '/heatmap' | '/inventory' | '/api/public/espn-sync'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/heatmap'
+    | '/inventory'
+    | '/api/public/espn-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  HeatmapRoute: typeof HeatmapRoute
   InventoryRoute: typeof InventoryRoute
   ApiPublicEspnSyncRoute: typeof ApiPublicEspnSyncRoute
 }
@@ -83,6 +99,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/heatmap': {
+      id: '/heatmap'
+      path: '/heatmap'
+      fullPath: '/heatmap'
+      preLoaderRoute: typeof HeatmapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inventory': {
@@ -105,6 +128,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  HeatmapRoute: HeatmapRoute,
   InventoryRoute: InventoryRoute,
   ApiPublicEspnSyncRoute: ApiPublicEspnSyncRoute,
 }
