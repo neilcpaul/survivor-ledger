@@ -270,7 +270,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
 
   /* ---------------- refresh ---------------- */
   const lastSyncAt = syncQ.data?.last_success_at ?? null;
-  const syncFailed = !!syncQ.data?.last_error;
+  const syncFailed = lastSyncAt ? now - new Date(lastSyncAt).getTime() > 24 * 60 * 60 * 1000 : false;
   const staleEnough = lastSyncAt ? now - new Date(lastSyncAt).getTime() > REFRESH_WINDOW_MS : true;
   const canRefresh = staleEnough && now - lastRefreshClick > REFRESH_WINDOW_MS && !refreshing;
 
