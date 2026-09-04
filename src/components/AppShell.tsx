@@ -347,6 +347,32 @@ function RailNav({ pathname }: { pathname: string }) {
 
   return (
     <nav className="rail" aria-label="Sections" ref={railRef}>
+      <div className="brand" ref={brandRef}>
+        <span className="brand-mark" aria-hidden="true">
+          SL
+        </span>
+        <span className="brand-name">
+          Survivor
+          <br />
+          Ledger
+        </span>
+      </div>
+
+      <div className="nav-list" role="tablist" aria-orientation="vertical">
+        {visible.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            role="tab"
+            aria-selected={pathname === item.to}
+            className="nav-item"
+          >
+            <span className="nav-dot" aria-hidden="true" />
+            {item.label}
+          </Link>
+        ))}
+      </div>
+
       {overflow.length ? (
         <div className="popover-wrap rail-menu" ref={menuRef}>
           <button
@@ -380,32 +406,6 @@ function RailNav({ pathname }: { pathname: string }) {
           ) : null}
         </div>
       ) : null}
-
-      <div className="brand" ref={brandRef}>
-        <span className="brand-mark" aria-hidden="true">
-          SL
-        </span>
-        <span className="brand-name">
-          Survivor
-          <br />
-          Ledger
-        </span>
-      </div>
-
-      <div className="nav-list" role="tablist" aria-orientation="vertical">
-        {visible.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            role="tab"
-            aria-selected={pathname === item.to}
-            className="nav-item"
-          >
-            <span className="nav-dot" aria-hidden="true" />
-            {item.label}
-          </Link>
-        ))}
-      </div>
 
       {/* hidden mirror used only to measure natural item widths */}
       <div className="nav-measure" aria-hidden="true" ref={measureRef}>
