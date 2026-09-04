@@ -216,9 +216,11 @@ function DetailRowPanel({ homeId, awayId }: { homeId: string | null; awayId: str
 
 function Fixtures() {
   const { games, teams, teamsById, plan, loading, currentWeek, setPick } = useSurvivor();
+  const isMobile = useIsMobile();
   const [week, setWeek] = useState<number | null>(null);
   const [teamFilter, setTeamFilter] = useState<string>("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [drawerGameId, setDrawerGameId] = useState<string | null>(null);
   const activeWeek = week ?? currentWeek;
 
   const list = useMemo(
@@ -231,6 +233,20 @@ function Fixtures() {
         .sort((a, b) => (a.kickoff_at ?? "").localeCompare(b.kickoff_at ?? "")),
     [games, activeWeek, teamFilter],
   );
+
+  const drawerGame = useMemo(
+    () => list.find((g) => g.id === drawerGameId) ?? null,
+    [list, drawerGameId],
+  );
+
+  useEffect(() => {
+    if (!drawerGameId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawerGameId(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [drawerGameId]);
 
   const filterTeamName = teamFilter ? teamsById.get(teamFilter)?.name : null;
 
@@ -256,6 +272,7 @@ function Fixtures() {
                 onChange={(e) => {
                   setTeamFilter(e.target.value);
                   setExpanded(null);
+                  setDrawerGameId(null);
                 }}
               >
                 <option value="">All teams</option>
@@ -276,6 +293,7 @@ function Fixtures() {
                   onClick={() => {
                     setWeek(w);
                     setExpanded(null);
+                    setDrawerGameId(null);
                   }}
                   aria-pressed={w === activeWeek}
                 >
@@ -324,7 +342,13 @@ function Fixtures() {
                         <Fragment key={g.id}>
                           <tr
                             className="expandable"
-                            onClick={() => setExpanded(open ? null : g.id)}
+                            onClick={() => {
+                              if (isMobile) {
+                                setDrawerGameId(g.id);
+                              } else {
+                                setExpanded(open ? null : g.id);
+                              }
+                            }}
                             aria-expanded={open}
                           >
                             <td style={{ width: 24 }}>
@@ -390,7 +414,7 @@ function Fixtures() {
                               </div>
                             </td>
                           </tr>
-                          {open ? (
+                          {!isMobile && open ? (
                             <tr>
                               <td colSpan={10} className="detail-panel">
                                 <DetailRowPanel
@@ -408,6 +432,38 @@ function Fixtures() {
               </table>
             </div>
           </section>
+
+          {isMobile && drawerGame ? (
+            <div
+              className="drawer-backdrop"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setDrawerGameId(null);
+              }}
+              aria-hidden={!drawerGame}
+            >
+              <div className="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+                <div className="drawer-head">
+                  <h3 id="drawer-title">
+                    {teamsById.get(drawerGame.away_team_id ?? "")?.abbr} @{" "}
+                    {teamsById.get(drawerGame.home_team_id ?? "")?.abbr}
+                  </h3>
+                  <button
+                    className="icon-btn"
+                    onClick={() => setDrawerGameId(null)}
+                    aria-label="Close details"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="drawer-body">
+                  <DetailRowPanel
+                    homeId={drawerGame.home_team_id}
+                    awayId={drawerGame.away_team_id}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </AppShell>
