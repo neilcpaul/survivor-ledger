@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Empty, StatusPill, TeamChipLabel, WinPill } from "@/components/bits";
 import { useSurvivor } from "@/lib/survivor-store";
 import { pct, WEEKS, type Team } from "@/lib/survivor";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/fixtures")({
   head: () => ({
