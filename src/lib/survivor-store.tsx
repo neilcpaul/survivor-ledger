@@ -267,9 +267,17 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   }, [plan, originalPlan]);
 
   /* ---------------- refresh ---------------- */
-  const lastSyncAt = syncQ.data?.last_success_at ?? null;
+  // Guests can't read sync_state (auth-only), so fall back to the freshest
+  // odds timestamp on the publicly readable games rows.
+  const gamesUpdatedAt = useMemo(() => {
+    let latest: string | null = null;
+    for (const g of games) if (g.updated_at && (!latest || g.updated_at > latest)) latest = g.updated_at;
+    return latest;
+  }, [games]);
+  const lastSyncAt = syncQ.data?.last_success_at ?? gamesUpdatedAt;
   const syncFailed = lastSyncAt ? now - new Date(lastSyncAt).getTime() > 24 * 60 * 60 * 1000 : false;
   const staleEnough = lastSyncAt ? now - new Date(lastSyncAt).getTime() > REFRESH_WINDOW_MS : true;
+
   const canRefresh = staleEnough && now - lastRefreshClick > REFRESH_WINDOW_MS && !refreshing;
 
   const refresh = useCallback(async () => {
