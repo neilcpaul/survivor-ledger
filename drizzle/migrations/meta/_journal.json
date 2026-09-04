@@ -8,6 +8,13 @@
       "when": 1788519192607,
       "tag": "0000_survivor_ledger_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788520254944,
+      "tag": "0001_restrict_sync_state_and_definer_exec",
+      "breakpoints": true
     }
   ]
 }

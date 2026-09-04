@@ -50,11 +50,12 @@ async function fetchGames(): Promise<Game[]> {
 async function fetchSyncState() {
   const { data } = await supabase
     .from("sync_state")
-    .select("last_success_at, last_error")
+    .select("last_success_at")
     .eq("id", "espn")
     .maybeSingle();
   return data ?? null;
 }
+
 
 type Ctx = {
   teams: Team[];
@@ -269,7 +270,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
 
   /* ---------------- refresh ---------------- */
   const lastSyncAt = syncQ.data?.last_success_at ?? null;
-  const syncFailed = !!syncQ.data?.last_error;
+  const syncFailed = lastSyncAt ? now - new Date(lastSyncAt).getTime() > 24 * 60 * 60 * 1000 : false;
   const staleEnough = lastSyncAt ? now - new Date(lastSyncAt).getTime() > REFRESH_WINDOW_MS : true;
   const canRefresh = staleEnough && now - lastRefreshClick > REFRESH_WINDOW_MS && !refreshing;
 
