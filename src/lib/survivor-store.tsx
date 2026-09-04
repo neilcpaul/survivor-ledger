@@ -145,8 +145,10 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   const syncQ = useQuery({
     queryKey: ["sync-state"],
     queryFn: fetchSyncState,
+    enabled: !!session?.user,
     refetchInterval: 60_000,
   });
+
 
   const teams = useMemo(() => teamsQ.data ?? [], [teamsQ.data]);
   const games = useMemo(() => gamesQ.data ?? [], [gamesQ.data]);
