@@ -259,14 +259,14 @@ a {
 }
 
 .topbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
   padding: 16px 22px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
-  flex-wrap: wrap;
 }
 
 .page-body {
@@ -553,7 +553,6 @@ button.badge:disabled {
     white-space: nowrap;
   }
   .topbar {
-    grid-template-columns: 1fr;
     gap: 10px;
   }
   .stat-grid {
