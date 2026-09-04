@@ -427,35 +427,37 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
     <div className="shell">
       <RailNav pathname={pathname} />
 
-
       <div className="main">
         <header className="topbar">
           <div className="flex items-center gap-3 min-w-0 flex-wrap">
             <h1 className="truncate">{title}</h1>
-            <span className="badge">
-              Week {currentWeek} of 18 · Regular season
-            </span>
+            <span className="badge">W{currentWeek} · R</span>
             {syncFailed || dataError ? (
               <span className="pill critical">Data may be stale</span>
             ) : null}
           </div>
           <div className="flex items-center gap-3 flex-wrap justify-end">
             <AuthWidget />
-            <span className="badge" title={lastSyncAt ?? "no successful sync yet"}>
-              <span
-                className="dot"
-                style={{ background: syncFailed ? "var(--caution)" : "var(--accent)" }}
+            <button
+              className="badge"
+              onClick={() => void refresh()}
+              disabled={!canRefresh || refreshing}
+              title={
+                refreshing
+                  ? "Refreshing…"
+                  : canRefresh
+                    ? "Fetch fresh data"
+                    : "Cached data is fresh (5 minute window)"
+              }
+              aria-live="polite"
+            >
+              <RefreshCw
+                size={12}
+                className={refreshing ? "spin" : ""}
+                style={{ color: syncFailed ? "var(--caution)" : "var(--accent)" }}
                 aria-hidden="true"
               />
-              Synced {agoLabel(lastSyncAt)}
-            </span>
-            <button
-              className="btn"
-              onClick={() => void refresh()}
-              disabled={!canRefresh}
-              title={canRefresh ? "Fetch fresh data" : "Cached data is fresh (5 minute window)"}
-            >
-              {refreshing ? "Refreshing…" : "Refresh"}
+              {refreshing ? "Syncing…" : agoLabel(lastSyncAt)}
             </button>
           </div>
         </header>
