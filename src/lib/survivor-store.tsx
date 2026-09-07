@@ -71,6 +71,11 @@ async function fetchSyncState() {
 
 const GUEST_PLAN_KEY = "survivor-ledger.guest-plan";
 
+/** True when this browser already holds anonymous guest picks. */
+export function hasLocalGuestPicks(): boolean {
+  return Object.keys(readGuestPlan()).length > 0;
+}
+
 function readGuestPlan(): Plan {
   if (typeof window === "undefined") return {};
   try {
