@@ -11,6 +11,7 @@ import {
   adminListUsers,
   adminRenameEntry,
   adminSetAccess,
+  adminSetWelcomeWizard,
   type ActivityRow,
   type AdminEntryRow,
   type AdminUserRow,
