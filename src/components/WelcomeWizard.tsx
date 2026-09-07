@@ -30,9 +30,6 @@ function alreadyDismissed(): boolean {
     return false;
   }
 }
-
-
-
 /**
  * First-visit welcome modal and pick wizard. Shown automatically to a signed-out
  * visitor with no local picks who hasn't closed it this session (and only when
