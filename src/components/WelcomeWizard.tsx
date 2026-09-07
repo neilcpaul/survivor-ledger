@@ -141,6 +141,7 @@ export function WelcomeWizard() {
 
 
 
+
   const close = useCallback(() => {
     markDismissed();
     setManual(false);
