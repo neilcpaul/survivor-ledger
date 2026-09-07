@@ -102,7 +102,6 @@ export function WelcomeWizard() {
     const state = { startX: 0, startY: 0, active: false };
 
     const onStart = (e: TouchEvent) => {
-      if (isInteractiveTarget(e.target)) return;
       const t = e.touches[0];
       if (!t) return;
       state.startX = t.clientX;
@@ -129,12 +128,10 @@ export function WelcomeWizard() {
       const dx = t.clientX - state.startX;
       const dy = t.clientY - state.startY;
       if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        e.preventDefault();
         goStep(dx < 0 ? 1 : -1);
       }
     };
-
-
-
 
     const onCancel = () => {
       state.active = false;
@@ -142,8 +139,9 @@ export function WelcomeWizard() {
 
     panel.addEventListener("touchstart", onStart, { passive: true });
     panel.addEventListener("touchmove", onMove, { passive: false });
-    panel.addEventListener("touchend", onEnd, { passive: true });
+    panel.addEventListener("touchend", onEnd, { passive: false });
     panel.addEventListener("touchcancel", onCancel, { passive: true });
+
     return () => {
       panel.removeEventListener("touchstart", onStart);
       panel.removeEventListener("touchmove", onMove);
