@@ -136,6 +136,40 @@ function writeGuestOriginal(picks: Plan, lockedAt: string | null) {
   }
 }
 
+// A signed-in user with no entry container yet keeps picks locally under their
+// own user id — deliberately separate from the anonymous guest key.
+function preEntryKey(userId: string) {
+  return `survivor-ledger.pre-entry.${userId}`;
+}
+
+function readPreEntryPlan(userId: string): Plan {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(preEntryKey(userId));
+    return raw ? planFromJson(JSON.parse(raw)) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writePreEntryPlan(userId: string, plan: Plan) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(preEntryKey(userId), JSON.stringify(plan));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function clearPreEntryPlan(userId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(preEntryKey(userId));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 function isComplete(plan: Plan): boolean {
   return WEEKS.every((w) => !!plan[w]);
 }
@@ -404,6 +438,29 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     writeGuestPlan(plan);
   }, [plan, session?.user?.id]);
 
+  // Signed in with no entry container yet: picks live in this browser under the
+  // user's own id, so a reload keeps them until their first entry exists.
+  const preEntryLoaded = useRef<string | null>(null);
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid || !entriesQ.isSuccess || !seeded.current) return;
+    if (entries.length) {
+      // The first entry already exists (perhaps created on another device), so
+      // any leftover local pre-entry picks are stale — drop them, don't merge.
+      clearPreEntryPlan(uid);
+      preEntryLoaded.current = null;
+      return;
+    }
+    if (preEntryLoaded.current !== uid) {
+      preEntryLoaded.current = uid;
+      const stored = readPreEntryPlan(uid);
+      if (Object.keys(stored).length) setPlan((prev) => ({ ...prev, ...stored }));
+      return;
+    }
+    writePreEntryPlan(uid, plan);
+  }, [session?.user?.id, entriesQ.isSuccess, entries.length, plan, slots.size, profileQ.isLoading]);
+
+
   /* ------------- load a signed-in entry's saved picks ------------- */
   useEffect(() => {
     if (!entryId || slots.size === 0) return;
@@ -551,12 +608,29 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
         .select("id, name, created_at")
         .single();
       if (data) {
+        // Zero-to-one only: the picks made before any entry existed move into
+        // this first entry, then the local key is dropped. Later entries start blank.
+        const firstEntry = entries.length === 0;
+        const carried = firstEntry ? readPreEntryPlan(session.user.id) : {};
+        const weeks = Object.keys(carried);
+        if (firstEntry && weeks.length) {
+          const rows = weeks.map((w) => ({
+            entry_id: data.id,
+            week: Number(w),
+            team_id: carried[Number(w)]!,
+          }));
+          await supabase.from("picks").upsert(rows, { onConflict: "entry_id,week" });
+        }
+        if (firstEntry) clearPreEntryPlan(session.user.id);
         qc.setQueryData<Entry[]>(entriesKey, (prev) => [...(prev ?? []), data as Entry]);
         setEntryId(data.id);
+        entryIdRef.current = data.id;
         qc.invalidateQueries({ queryKey: entriesKey });
+        // Same completion check as any other write: a migrated 18/18 plan locks now.
+        if (firstEntry && weeks.length) lockIfComplete({ ...plan, ...carried });
       }
     },
-    [session?.user?.id, qc, entriesKey],
+    [session?.user?.id, qc, entriesKey, entries.length, plan, lockIfComplete],
   );
 
   const renameEntry = useCallback(

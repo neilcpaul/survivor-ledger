@@ -208,6 +208,9 @@ function SeasonOverview() {
                 {saveState === "synced" ? (
                   <p className="sub">● Synced to {entryName ?? "your entry"}</p>
                 ) : null}
+                {saveState === "no-entry" ? (
+                  <p className="sub">Not saved yet — create an entry to keep these picks</p>
+                ) : null}
               </div>
               <Link to={isAnalysis ? "/comparator" : "/heatmap"} className="btn primary">
                 Change a pick
