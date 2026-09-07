@@ -108,6 +108,7 @@ export function WelcomeWizard() {
       state.startX = t.clientX;
       state.startY = t.clientY;
       state.active = true;
+      console.log("[swipe] start", state.startX, state.startY);
     };
 
     const onMove = (e: TouchEvent) => {
@@ -128,10 +129,13 @@ export function WelcomeWizard() {
       if (!t) return;
       const dx = t.clientX - state.startX;
       const dy = t.clientY - state.startY;
+      console.log("[swipe] end", dx, dy, state.startX, t.clientX);
       if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        console.log("[swipe] go", dx < 0 ? 1 : -1);
         goStep(dx < 0 ? 1 : -1);
       }
     };
+
 
 
     const onCancel = () => {
