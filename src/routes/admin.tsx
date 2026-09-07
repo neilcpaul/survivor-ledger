@@ -54,6 +54,8 @@ function eventLabel(row: ActivityRow): string {
       return `Renamed entry to '${d["to"] ?? entry}'`;
     case "entry_delete":
       return `Deleted entry '${entry}'`;
+    case "user_delete":
+      return `Removed account${d["display_name"] ? ` '${d["display_name"]}'` : ""}`;
     case "pick_change":
       return `Changed Week ${d["week"]} pick: ${d["from"] ?? "—"} → ${d["to"] ?? "—"}`;
     case "original_plan_locked":
