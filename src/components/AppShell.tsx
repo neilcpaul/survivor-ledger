@@ -13,15 +13,20 @@ const ALL_NAV = [
   { to: "/admin", label: "Admin" },
 ] as const;
 
-type NavItem = (typeof ALL_NAV)[number];
+type RoutePath = (typeof ALL_NAV)[number]["to"];
+type NavItem = { key: string; label: string; to?: RoutePath; action?: "wizard" };
+
+const WIZARD_ITEM: NavItem = { key: "wizard", label: "Pick Wizard", action: "wizard" };
 
 function useNav(): NavItem[] {
   const { isAnalysis, isAdmin } = useSurvivor();
-  return ALL_NAV.filter(
+  const items: NavItem[] = ALL_NAV.filter(
     (item) =>
       (item.to !== "/comparator" || isAnalysis) && (item.to !== "/admin" || isAdmin),
-  );
+  ).map((item) => ({ key: item.to, label: item.label, to: item.to }));
+  return [...items, WIZARD_ITEM];
 }
+
 
 function agoLabel(iso: string | null): string {
   if (!iso) return "never synced";
