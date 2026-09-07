@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { SurvivalChart } from "@/components/SurvivalChart";
@@ -7,6 +7,7 @@ import { WeekLedgerTable } from "@/components/WeekLedgerTable";
 import { useQuery } from "@tanstack/react-query";
 import { NewsTicker } from "@/components/news";
 import { fetchNews } from "@/lib/news";
+import { OPEN_WIZARD_EVENT } from "@/components/WelcomeWizard";
 import { usePlanCurves, useSurvivor } from "@/lib/survivor-store";
 import { finalOdds, oddsAsOneInN, pct, ppDelta, survivalCurve } from "@/lib/survivor";
 
@@ -51,6 +52,10 @@ function SeasonOverview() {
     otherEntryPlans,
   } = useSurvivor();
   const curves = usePlanCurves();
+  const openWizard = useCallback(
+    () => { window.dispatchEvent(new CustomEvent(OPEN_WIZARD_EVENT)); },
+    [],
+  );
   const [confirmReset, setConfirmReset] = useState(false);
   const { data: news } = useQuery({
     queryKey: ["news", 20],
@@ -78,12 +83,32 @@ function SeasonOverview() {
         <Empty>Loading season data…</Empty>
       ) : (
         <>
+          {!hasPicks ? (
+            <button
+              type="button"
+              className="card select-picks-card"
+              onClick={openWizard}
+              aria-label="Select your picks with the Pick Wizard"
+            >
+              <div className="select-picks-text">
+                <h2>Select your picks</h2>
+                <p className="sub">
+                  Open the Pick Wizard to choose a team for every week.
+                </p>
+              </div>
+              <span className="select-picks-arrow" aria-hidden="true">
+                →
+              </span>
+            </button>
+          ) : null}
+
           <section className="stat-grid" style={{ marginBottom: 16 }}>
             <StatCard
               label="Season survival odds"
               value={hasPicks ? pct(mine, 2) : "—"}
               sub={hasPicks ? oddsAsOneInN(mine) : "Make your first pick"}
               tone="accent"
+              onClick={!hasPicks ? openWizard : undefined}
             />
             <StatCard
               label="vs. original plan"
