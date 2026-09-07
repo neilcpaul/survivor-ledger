@@ -976,10 +976,15 @@ table.grid tr.expandable:hover th {
   min-width: 0;
 }
 .news-ticker-item .news-headline {
+  flex: 1 1 auto;
+  min-width: 0;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+}
+.news-ticker-item .sub.num {
+  flex-shrink: 0;
 }
 @media (min-width: 640px) {
   .news-ticker-item .news-headline {
