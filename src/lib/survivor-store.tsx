@@ -136,6 +136,40 @@ function writeGuestOriginal(picks: Plan, lockedAt: string | null) {
   }
 }
 
+// A signed-in user with no entry container yet keeps picks locally under their
+// own user id — deliberately separate from the anonymous guest key.
+function preEntryKey(userId: string) {
+  return `survivor-ledger.pre-entry.${userId}`;
+}
+
+function readPreEntryPlan(userId: string): Plan {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(preEntryKey(userId));
+    return raw ? planFromJson(JSON.parse(raw)) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writePreEntryPlan(userId: string, plan: Plan) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(preEntryKey(userId), JSON.stringify(plan));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function clearPreEntryPlan(userId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(preEntryKey(userId));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 function isComplete(plan: Plan): boolean {
   return WEEKS.every((w) => !!plan[w]);
 }
