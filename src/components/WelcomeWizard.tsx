@@ -152,7 +152,8 @@ export function WelcomeWizard() {
       panel.removeEventListener("touchend", onEnd);
       panel.removeEventListener("touchcancel", onCancel);
     };
-  }, [phase, goStep]);
+  }, [phase, stepIndex, goStep]);
+
 
 
   const close = useCallback(() => {
