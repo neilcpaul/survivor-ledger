@@ -1123,3 +1123,37 @@ table.grid tr.expandable:hover th {
   object-fit: contain;
   flex-shrink: 0;
 }
+
+/* Comparator strategy dials -------------------------------------------- */
+.segment-dial {
+  flex: 1 1 200px;
+  min-width: 180px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.segment-dial .label {
+  margin-bottom: 6px;
+}
+.segment-dial .btn {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.range-pair {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) 1fr;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 6px;
+}
+.range-pair input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+@media (max-width: 640px) {
+  .range-pair {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
