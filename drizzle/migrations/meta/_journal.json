@@ -29,6 +29,13 @@
       "when": 1788774418989,
       "tag": "0003_lock_down_security_definer_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788776048579,
+      "tag": "0004_fix_guard_profile_privileges_trigger",
+      "breakpoints": true
     }
   ]
 }
