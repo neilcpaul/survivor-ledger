@@ -233,7 +233,7 @@ function TruncatedBadges({
   return (
     <TooltipProvider delayDuration={200}>
       <div className="news-badges news-badges-truncate" ref={visibleRef}>
-        <span className="sub num">{relativeTime(publishedAt)}</span>
+        {showTime ? <span className="sub num">{relativeTime(publishedAt)}</span> : null}
         {visible.map((id) => (
           <TeamBadge key={id} teamId={id} />
         ))}
@@ -259,7 +259,7 @@ function TruncatedBadges({
         ref={measureRef}
         aria-hidden="true"
       >
-        <span className="sub num">{relativeTime(publishedAt)}</span>
+        {showTime ? <span className="sub num">{relativeTime(publishedAt)}</span> : null}
         {teamIds.map((id) => (
           <TeamBadge key={id} teamId={id} />
         ))}
