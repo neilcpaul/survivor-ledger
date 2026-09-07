@@ -155,6 +155,38 @@ async function syncPredictor(games: GameRow[]) {
   });
 }
 
+async function syncNews(db: SupabaseClient) {
+  const data = await getJson(`${SITE}/news?limit=50`);
+  const now = new Date().toISOString();
+  const rows = (data?.articles ?? [])
+    .map((a: Json) => {
+      const id =
+        a?.id != null
+          ? String(a.id)
+          : (a?.links?.web?.href ? String(a.links.web.href) : null);
+      if (!id) return null;
+      const teamIds = (a?.categories ?? [])
+        .filter((c: Json) => c?.type === "team" && c?.teamId != null)
+        .map((c: Json) => Number(c.teamId))
+        .filter((n: number) => Number.isFinite(n));
+      return {
+        id,
+        headline: a?.headline ?? a?.title ?? null,
+        description: a?.description ?? null,
+        published_at: a?.published ?? a?.lastModified ?? null,
+        byline: a?.byline ?? null,
+        image_url: a?.images?.[0]?.url ?? null,
+        image_caption: a?.images?.[0]?.caption ?? a?.images?.[0]?.alt ?? null,
+        article_url: a?.links?.web?.href ?? null,
+        team_ids: Array.from(new Set<number>(teamIds)),
+        updated_at: now,
+      };
+    })
+    .filter(Boolean);
+  if (rows.length) await db.from("news_articles").upsert(rows, { onConflict: "id" });
+  return rows.length;
+}
+
 async function syncInjuries(db: SupabaseClient) {
   const data = await getJson(`${SITEWEB}/injuries`);
   const rows: Json[] = [];
@@ -234,6 +266,9 @@ async function runSync(scope: string) {
       await db.from("games").upsert(games.slice(i, i + 200), { onConflict: "id" });
     }
     summary.games = games.length;
+
+    summary.news = await syncNews(db);
+
 
     if (scope === "full") {
       summary.injuries = await syncInjuries(db);

@@ -10,16 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ComparatorRouteImport } from './routes/comparator'
 import { Route as FixturesRouteImport } from './routes/fixtures'
 import { Route as HeatmapRouteImport } from './routes/heatmap'
 import { Route as InventoryRouteImport } from './routes/inventory'
+import { Route as NewsRouteImport } from './routes/news'
+import { Route as TeamsTeamIdRouteImport } from './routes/teams.$teamId'
 import { Route as ApiPublicEspnSyncRouteImport } from './routes/api/public/espn-sync'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -47,6 +55,16 @@ const InventoryRoute = InventoryRouteImport.update({
   path: '/inventory',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NewsRoute = NewsRouteImport.update({
+  id: '/news',
+  path: '/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
+  id: '/teams/$teamId',
+  path: '/teams/$teamId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicEspnSyncRoute = ApiPublicEspnSyncRouteImport.update({
   id: '/api/public/espn-sync',
   path: '/api/public/espn-sync',
@@ -55,69 +73,90 @@ const ApiPublicEspnSyncRoute = ApiPublicEspnSyncRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/comparator': typeof ComparatorRoute
   '/fixtures': typeof FixturesRoute
   '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
+  '/news': typeof NewsRoute
+  '/teams/$teamId': typeof TeamsTeamIdRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/comparator': typeof ComparatorRoute
   '/fixtures': typeof FixturesRoute
   '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
+  '/news': typeof NewsRoute
+  '/teams/$teamId': typeof TeamsTeamIdRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/comparator': typeof ComparatorRoute
   '/fixtures': typeof FixturesRoute
   '/heatmap': typeof HeatmapRoute
   '/inventory': typeof InventoryRoute
+  '/news': typeof NewsRoute
+  '/teams/$teamId': typeof TeamsTeamIdRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/auth'
     | '/comparator'
     | '/fixtures'
     | '/heatmap'
     | '/inventory'
+    | '/news'
+    | '/teams/$teamId'
     | '/api/public/espn-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/auth'
     | '/comparator'
     | '/fixtures'
     | '/heatmap'
     | '/inventory'
+    | '/news'
+    | '/teams/$teamId'
     | '/api/public/espn-sync'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/auth'
     | '/comparator'
     | '/fixtures'
     | '/heatmap'
     | '/inventory'
+    | '/news'
+    | '/teams/$teamId'
     | '/api/public/espn-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   ComparatorRoute: typeof ComparatorRoute
   FixturesRoute: typeof FixturesRoute
   HeatmapRoute: typeof HeatmapRoute
   InventoryRoute: typeof InventoryRoute
+  NewsRoute: typeof NewsRoute
+  TeamsTeamIdRoute: typeof TeamsTeamIdRoute
   ApiPublicEspnSyncRoute: typeof ApiPublicEspnSyncRoute
 }
 
@@ -128,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -165,6 +211,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InventoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/news': {
+      id: '/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/teams/$teamId': {
+      id: '/teams/$teamId'
+      path: '/teams/$teamId'
+      fullPath: '/teams/$teamId'
+      preLoaderRoute: typeof TeamsTeamIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/espn-sync': {
       id: '/api/public/espn-sync'
       path: '/api/public/espn-sync'
@@ -177,11 +237,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   ComparatorRoute: ComparatorRoute,
   FixturesRoute: FixturesRoute,
   HeatmapRoute: HeatmapRoute,
   InventoryRoute: InventoryRoute,
+  NewsRoute: NewsRoute,
+  TeamsTeamIdRoute: TeamsTeamIdRoute,
   ApiPublicEspnSyncRoute: ApiPublicEspnSyncRoute,
 }
 export const routeTree = rootRouteImport

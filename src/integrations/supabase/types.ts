@@ -151,6 +151,45 @@ export type Database = {
           },
         ]
       }
+      news_articles: {
+        Row: {
+          article_url: string | null
+          byline: string | null
+          description: string | null
+          headline: string | null
+          id: string
+          image_caption: string | null
+          image_url: string | null
+          published_at: string | null
+          team_ids: number[]
+          updated_at: string
+        }
+        Insert: {
+          article_url?: string | null
+          byline?: string | null
+          description?: string | null
+          headline?: string | null
+          id: string
+          image_caption?: string | null
+          image_url?: string | null
+          published_at?: string | null
+          team_ids?: number[]
+          updated_at?: string
+        }
+        Update: {
+          article_url?: string | null
+          byline?: string | null
+          description?: string | null
+          headline?: string | null
+          id?: string
+          image_caption?: string | null
+          image_url?: string | null
+          published_at?: string | null
+          team_ids?: number[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       picks: {
         Row: {
           created_at: string
@@ -188,16 +227,22 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          is_admin: boolean
+          tier: string
         }
         Insert: {
           created_at?: string
           display_name?: string | null
           id: string
+          is_admin?: boolean
+          tier?: string
         }
         Update: {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_admin?: boolean
+          tier?: string
         }
         Relationships: []
       }
@@ -301,7 +346,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: { uid: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

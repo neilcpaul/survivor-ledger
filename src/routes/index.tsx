@@ -2,6 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { SurvivalChart } from "@/components/SurvivalChart";
 import { Delta, Empty, StatCard, TeamChipLabel, WinPill } from "@/components/bits";
+import { useQuery } from "@tanstack/react-query";
+import { NewsTicker } from "@/components/news";
+import { fetchNews } from "@/lib/news";
 import { usePlanCurves, useSurvivor } from "@/lib/survivor-store";
 import { finalOdds, oddsAsOneInN, pct, ppDelta, WEEKS } from "@/lib/survivor";
 
@@ -28,9 +31,14 @@ export const Route = createFileRoute("/")({
 });
 
 function SeasonOverview() {
-  const { slots, plan, originalPlan, teamsById, loading, currentWeek, editedWeeks, resetPlan } =
+  const { slots, teamsById, loading, currentWeek, editedWeeks, resetPlan, isAnalysis, saveState, entryName } =
     useSurvivor();
   const curves = usePlanCurves();
+  const { data: news } = useQuery({
+    queryKey: ["news", 20],
+    queryFn: () => fetchNews(20),
+    staleTime: 60_000,
+  });
 
   const mine = finalOdds(curves.mine);
   const original = finalOdds(curves.original);
@@ -57,12 +65,14 @@ function SeasonOverview() {
               value={<Delta pp={ppDelta(mine, original)} />}
               sub={`Original ${pct(original, 2)}`}
             />
-            <StatCard
-              label="Optimal ceiling"
-              value={pct(best, 2)}
-              sub={<>You are {ppDelta(best, mine).toFixed(2)}pp below the best legal plan</>}
-              tone="optimal"
-            />
+            {isAnalysis ? (
+              <StatCard
+                label="Optimal ceiling"
+                value={pct(best, 2)}
+                sub={<>You are {ppDelta(best, mine).toFixed(2)}pp below the best legal plan</>}
+                tone="optimal"
+              />
+            ) : null}
             <StatCard
               label="Weakest week"
               value={weakest ? `W${weakest.week}` : "—"}
@@ -78,6 +88,8 @@ function SeasonOverview() {
               tone="scenario"
             />
           </section>
+
+          <NewsTicker articles={news ?? []} />
 
           <section className="card" style={{ marginBottom: 16 }}>
             <div className="card-head">
@@ -106,13 +118,17 @@ function SeasonOverview() {
                   curve: curves.original,
                   dashed: true,
                 },
-                {
-                  key: "opt",
-                  label: "Optimal plan",
-                  color: "var(--optimal)",
-                  curve: curves.optimal,
-                  dashed: true,
-                },
+                ...(isAnalysis
+                  ? [
+                      {
+                        key: "opt",
+                        label: "Optimal plan",
+                        color: "var(--optimal)",
+                        curve: curves.optimal,
+                        dashed: true,
+                      },
+                    ]
+                  : []),
               ]}
             />
           </section>
@@ -123,6 +139,13 @@ function SeasonOverview() {
                 <h2>Week ledger</h2>
                 <p className="sub">
                   Every week's pick, its win probability, and the running season odds.
+                </p>
+                <p className="sub">
+                  {saveState === "guest" ? (
+                    "Not saved · local to this device"
+                  ) : (
+                    <>● Synced to {entryName ?? "your entry"}</>
+                  )}
                 </p>
               </div>
               <Link to="/comparator" className="btn primary">
@@ -163,6 +186,7 @@ function SeasonOverview() {
                             abbr={team?.abbr}
                             logo={team?.logo_url}
                             name={team?.name}
+                            teamId={team?.id}
                           />
                         </td>
                         <td className="sub">

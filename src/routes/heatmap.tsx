@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Empty } from "@/components/bits";
@@ -114,7 +114,9 @@ function Heatmap() {
                         className="num"
                         style={{ position: "sticky", left: 0, background: "var(--surface)" }}
                       >
-                        {team.abbr}
+                        <Link to="/teams/$teamId" params={{ teamId: team.id }} className="team-link">
+                          {team.abbr}
+                        </Link>
                       </th>
                       {WEEKS.map((w) => {
                         const slot = slots.get(w)?.get(team.id);
