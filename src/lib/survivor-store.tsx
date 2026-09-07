@@ -60,6 +60,32 @@ async function fetchSyncState() {
 
 
 
+const GUEST_PLAN_KEY = "survivor-ledger.guest-plan";
+
+function readGuestPlan(): Plan {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(GUEST_PLAN_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    const plan: Plan = {};
+    for (const [week, teamId] of Object.entries(parsed)) {
+      if (typeof teamId === "string") plan[Number(week)] = teamId;
+    }
+    return plan;
+  } catch {
+    return {};
+  }
+}
+
+function writeGuestPlan(plan: Plan) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GUEST_PLAN_KEY, JSON.stringify(plan));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 type Ctx = {
   teams: Team[];
   teamsById: Map<string, Team>;
@@ -230,25 +256,24 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
 
   /* ------------- seed a starting plan from the data ------------- */
   // Analysis tier starts from a computed plan; basic tier (and guests) start
-  // from a completely blank ledger and fill it in themselves.
-  useEffect(() => {
-    if (seeded.current || slots.size === 0 || profileQ.isLoading) return;
-    seeded.current = true;
-    const seed = isAnalysis ? greedyPlan(slots) : {};
-    setPlan(seed);
-    setOriginalPlan(seed);
-  }, [slots, isAnalysis, profileQ.isLoading]);
-
-  // Tier can resolve after the first seed (sign-in / sign-out): re-seed.
-  const seededTier = useRef<boolean | null>(null);
+  // from a blank ledger — restored from this browser's own storage for guests.
+  const seededTier = useRef<string | null>(null);
   useEffect(() => {
     if (slots.size === 0 || profileQ.isLoading) return;
-    if (seededTier.current === isAnalysis) return;
-    seededTier.current = isAnalysis;
+    const key = `${isAnalysis}:${session?.user?.id ?? "guest"}`;
+    if (seededTier.current === key) return;
+    seededTier.current = key;
+    seeded.current = true;
     const seed = isAnalysis ? greedyPlan(slots) : {};
-    setPlan(seed);
     setOriginalPlan(seed);
-  }, [isAnalysis, slots, profileQ.isLoading]);
+    setPlan(session?.user ? seed : { ...seed, ...readGuestPlan() });
+  }, [isAnalysis, slots, profileQ.isLoading, session?.user?.id]);
+
+  // Guest picks live in this browser only, so a reload keeps them.
+  useEffect(() => {
+    if (session?.user || !seeded.current) return;
+    writeGuestPlan(plan);
+  }, [plan, session?.user?.id]);
 
   /* ------------- load a signed-in entry's saved picks ------------- */
   useEffect(() => {

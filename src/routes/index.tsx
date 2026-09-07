@@ -46,6 +46,7 @@ function SeasonOverview() {
   const weakest = [...curves.mine]
     .filter((p) => p.winProb != null)
     .sort((a, b) => (a.winProb ?? 1) - (b.winProb ?? 1))[0];
+  const hasPicks = curves.mine.some((p) => p.winProb != null);
 
   return (
     <AppShell title="Season Overview">
@@ -56,8 +57,8 @@ function SeasonOverview() {
           <section className="stat-grid" style={{ marginBottom: 16 }}>
             <StatCard
               label="Season survival odds"
-              value={pct(mine, 2)}
-              sub={oddsAsOneInN(mine)}
+              value={hasPicks ? pct(mine, 2) : "—"}
+              sub={hasPicks ? oddsAsOneInN(mine) : "Make your first pick"}
               tone="accent"
             />
             <StatCard
@@ -140,15 +141,11 @@ function SeasonOverview() {
                 <p className="sub">
                   Every week's pick, its win probability, and the running season odds.
                 </p>
-                <p className="sub">
-                  {saveState === "guest" ? (
-                    "Not saved · local to this device"
-                  ) : (
-                    <>● Synced to {entryName ?? "your entry"}</>
-                  )}
-                </p>
+                {saveState === "synced" ? (
+                  <p className="sub">● Synced to {entryName ?? "your entry"}</p>
+                ) : null}
               </div>
-              <Link to="/comparator" className="btn primary">
+              <Link to={isAnalysis ? "/comparator" : "/heatmap"} className="btn primary">
                 Change a pick
               </Link>
             </div>
@@ -195,7 +192,11 @@ function SeasonOverview() {
                         <td>
                           <WinPill p={point.winProb} />
                         </td>
-                        <td className="num">{pct(point.cumulative, 2)}</td>
+                        <td className="num">
+                          {curves.mine.slice(0, i + 1).some((p) => p.winProb != null)
+                            ? pct(point.cumulative, 2)
+                            : "—"}
+                        </td>
                         <td>
                           <Delta pp={ppDelta(point.cumulative, orig.cumulative)} />
                         </td>

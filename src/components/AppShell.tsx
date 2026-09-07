@@ -5,11 +5,11 @@ import { useSurvivor } from "@/lib/survivor-store";
 
 const ALL_NAV = [
   { to: "/", label: "Season Overview" },
-  { to: "/inventory", label: "Team Inventory" },
-  { to: "/heatmap", label: "Matchup Heatmap" },
-  { to: "/comparator", label: "Pick Comparator" },
-  { to: "/fixtures", label: "Fixtures" },
   { to: "/news", label: "News" },
+  { to: "/fixtures", label: "Fixtures" },
+  { to: "/comparator", label: "Pick Comparator" },
+  { to: "/heatmap", label: "Matchup Heatmap" },
+  { to: "/inventory", label: "Team Inventory" },
   { to: "/admin", label: "Admin" },
 ] as const;
 
@@ -245,10 +245,6 @@ function AuthWidget() {
   if (!session?.user) {
     return (
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="badge" title="Your picks are stored in this browser only">
-          <span className="dot" style={{ background: "var(--caution)" }} aria-hidden="true" />
-          Not saved · local to this device
-        </span>
         <Link to="/auth" className="btn primary">
           Sign in
         </Link>
@@ -258,31 +254,18 @@ function AuthWidget() {
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="badge" title={`Plan storage status: ${saveState}`}>
-        <span
-          className="dot"
-          style={{
-            background:
-              saveState === "synced"
-                ? "var(--accent)"
-                : saveState === "error"
-                  ? "var(--critical)"
-                  : saveState === "no-entry"
-                    ? "var(--neutral)"
-                    : "var(--caution)",
-          }}
-          aria-hidden="true"
-        />
-        {saveState === "synced"
-          ? `Synced to ${entryName ?? "your entry"}`
-          : saveState === "saving"
-            ? "Saving…"
-            : saveState === "error"
-              ? "Save failed"
-              : saveState === "no-entry"
-                ? "No entry — picks not saved"
-                : "Loading entry…"}
-      </span>
+      {saveState === "synced" || saveState === "error" ? (
+        <span className="badge" title={`Plan storage status: ${saveState}`}>
+          <span
+            className="dot"
+            style={{
+              background: saveState === "synced" ? "var(--accent)" : "var(--critical)",
+            }}
+            aria-hidden="true"
+          />
+          {saveState === "synced" ? `Synced to ${entryName ?? "your entry"}` : "Save failed"}
+        </span>
+      ) : null}
 
       <EntrySwitcher />
       <span className="sub">{displayName}</span>
@@ -450,10 +433,10 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
             <h1 className="truncate">{title}</h1>
             <span
               className="badge"
-              title={`Week ${currentWeek} of 18 · Regular season`}
-              aria-label={`Week ${currentWeek} of 18 · Regular season`}
+              title={`Week ${currentWeek} of 18 · Regular`}
+              aria-label={`Week ${currentWeek} of 18 · Regular`}
             >
-              Week {currentWeek} of 18 · Regular season
+              Week {currentWeek} of 18 · Regular
             </span>
             {syncFailed || dataError ? (
               <span className="pill critical">Data may be stale</span>

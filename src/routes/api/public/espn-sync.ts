@@ -140,9 +140,31 @@ async function syncSchedule(db: SupabaseClient, year: number, weeks: number[]) {
   return all;
 }
 
+function impliedFromMoneyline(ml: number | null | undefined): number | null {
+  if (typeof ml !== "number" || !Number.isFinite(ml) || ml === 0) return null;
+  return ml > 0 ? 100 / (ml + 100) : -ml / (-ml + 100);
+}
+
+/** Fallback when ESPN's BPI predictor has no numbers yet: sportsbook moneylines. */
+async function syncOddsFallback(games: GameRow[]) {
+  const missing = games.filter((g) => g.home_win_prob == null || g.away_win_prob == null);
+  await pool(missing, 8, async (g) => {
+    const data = await getJson(`${CORE}/events/${g.id}/competitions/${g.id}/odds`, 1);
+    const item = data?.items?.[0];
+    if (!item) return;
+    const rawHome = impliedFromMoneyline(item?.homeTeamOdds?.moneyLine);
+    const rawAway = impliedFromMoneyline(item?.awayTeamOdds?.moneyLine);
+    if (rawHome == null || rawAway == null) return;
+    const total = rawHome + rawAway; // strip the bookmaker's overround
+    if (total <= 0) return;
+    g.home_win_prob = rawHome / total;
+    g.away_win_prob = rawAway / total;
+  });
+}
+
 async function syncPredictor(games: GameRow[]) {
   await pool(games, 10, async (g) => {
-    const data = await getJson(`${CORE}/events/${g.id}/competitions/${g.id}/predictor`, 1);
+    const data = await getJson(`${CORE}/events/${g.id}/competitions/${g.id}/predictor`, 2);
     if (!data) return;
     const find = (side: Json | undefined) =>
       (side?.statistics ?? []).find((s: Json) => s?.name === "gameProjection")?.value;
@@ -261,7 +283,11 @@ async function runSync(scope: string) {
 
     const weeks = Array.from({ length: 18 }, (_, i) => i + 1);
     const games = await syncSchedule(db, year, weeks);
-    if (scope !== "schedule-only") await syncPredictor(games);
+    if (scope !== "schedule-only") {
+      await syncPredictor(games);
+      await syncOddsFallback(games);
+      summary.games_with_prob = games.filter((g) => g.home_win_prob != null).length;
+    }
     for (let i = 0; i < games.length; i += 200) {
       await db.from("games").upsert(games.slice(i, i + 200), { onConflict: "id" });
     }
