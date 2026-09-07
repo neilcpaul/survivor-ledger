@@ -658,7 +658,10 @@ function Comparator() {
                     ? `Swap to ${teamsById.get(bestAlt.slot.teamId)?.abbr}`
                     : "No swap available",
                   color: "var(--scenario)",
-                {...(originalLocked
+                  curve: previewCurve,
+                  dashed: true,
+                },
+                ...(originalLocked
                   ? [
                       {
                         key: "orig",
@@ -668,7 +671,8 @@ function Comparator() {
                         dashed: true,
                       },
                     ]
-                  : [])},
+                  : []),
+
                 ...otherCurves.map((e, i) => ({
                   key: `entry-${e.id}`,
                   label: e.name,
