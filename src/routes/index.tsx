@@ -165,13 +165,23 @@ function SeasonOverview() {
               band={curves.mine}
               series={[
                 { key: "mine", label: "Current plan", color: "var(--accent)", curve: curves.mine },
-                {
-                  key: "orig",
-                  label: "Original plan",
-                  color: "var(--scenario)",
-                  curve: curves.original,
-                  dashed: true,
-                },
+                ...(originalLocked
+                  ? [
+                      {
+                        key: "orig",
+                        label: "Original plan",
+                        color: "var(--scenario)",
+                        curve: curves.original,
+                        dashed: true,
+                      },
+                    ]
+                  : []),
+                ...otherCurves.map((e, i) => ({
+                  key: `entry-${e.id}`,
+                  label: e.name,
+                  color: ENTRY_COLORS[i % ENTRY_COLORS.length]!,
+                  curve: e.curve,
+                })),
                 ...(isAnalysis
                   ? [
                       {
@@ -184,6 +194,7 @@ function SeasonOverview() {
                     ]
                   : []),
               ]}
+
             />
           </section>
 
