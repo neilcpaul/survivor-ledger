@@ -301,6 +301,7 @@ function RailNav({ pathname }: { pathname: string }) {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(NAV.length);
   const [open, setOpen] = useState(false);
+  const openWizard = () => window.dispatchEvent(new CustomEvent(OPEN_WIZARD_EVENT));
 
   // Measure each nav item once from a hidden mirror list, then work out how
   // many fit beside the brand on the horizontal (narrow-screen) rail.
