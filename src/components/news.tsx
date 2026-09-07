@@ -176,7 +176,7 @@ function TruncatedBadges({
   publishedAt,
 }: {
   teamIds: string[];
-  publishedAt: string;
+  publishedAt: string | null;
 }) {
   const visibleRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
