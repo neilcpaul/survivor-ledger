@@ -472,3 +472,60 @@ export const adminSetWelcomeWizard = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+
+/**
+ * Remove an account outright: its picks, entries, profile, and the auth user.
+ * Admin-only, never self-deletion, and never the last remaining administrator.
+ */
+export const adminDeleteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string }) => {
+    if (!input?.userId) throw new Error("userId is required");
+    return { userId: input.userId };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    if (data.userId === context.userId) throw new Error("You cannot remove your own account");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: target } = await supabaseAdmin
+      .from("profiles")
+      .select("is_admin, display_name")
+      .eq("id", data.userId)
+      .maybeSingle();
+    if (target?.is_admin) {
+      const { count } = await supabaseAdmin
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("is_admin", true);
+      if ((count ?? 0) <= 1) throw new Error("There must always be at least one administrator");
+    }
+
+    const { data: entries } = await supabaseAdmin
+      .from("entries")
+      .select("id")
+      .eq("user_id", data.userId);
+    const entryIds = (entries ?? []).map((e) => e.id);
+    if (entryIds.length) {
+      await supabaseAdmin.from("picks").delete().in("entry_id", entryIds);
+      await supabaseAdmin.from("entries").delete().eq("user_id", data.userId);
+    }
+    await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
+
+    // Logged before the auth record disappears so the feed keeps the email.
+    await writeActivity({
+      actor_type: "admin",
+      actor_id: context.userId,
+      event_type: "user_delete",
+      target_user_id: data.userId,
+      detail: {
+        display_name: target?.display_name ?? null,
+        entries_removed: entryIds.length,
+      },
+    });
+
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw error;
+    return { ok: true };
+  });

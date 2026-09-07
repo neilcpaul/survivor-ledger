@@ -7,6 +7,7 @@ import { WeekLedgerTable } from "@/components/WeekLedgerTable";
 import {
   adminActivityFeed,
   adminDeleteEntry,
+  adminDeleteUser,
   adminGetEntryPicks,
   adminListUsers,
   adminRenameEntry,
@@ -54,6 +55,8 @@ function eventLabel(row: ActivityRow): string {
       return `Renamed entry to '${d["to"] ?? entry}'`;
     case "entry_delete":
       return `Deleted entry '${entry}'`;
+    case "user_delete":
+      return `Removed account${d["display_name"] ? ` '${d["display_name"]}'` : ""}`;
     case "pick_change":
       return `Changed Week ${d["week"]} pick: ${d["from"] ?? "—"} → ${d["to"] ?? "—"}`;
     case "original_plan_locked":
@@ -180,6 +183,7 @@ function AdminPage() {
                   <th scope="col">Joined</th>
                   <th scope="col">Access</th>
                   <th scope="col">Administrator</th>
+                  <th scope="col">Account</th>
                 </tr>
               </thead>
               <tbody>
@@ -276,6 +280,21 @@ function UserRows({
   onError: (v: string | null) => void;
 }) {
   const label = user.email ?? user.id;
+  const qc = useQueryClient();
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const removeUser = useMutation({
+    mutationFn: () => adminDeleteUser({ data: { userId: user.id } }),
+    onError: (e: Error) => {
+      setConfirmRemove(false);
+      onError(e.message);
+    },
+    onSuccess: () => {
+      onError(null);
+      setConfirmRemove(false);
+      void qc.invalidateQueries({ queryKey: ["admin-users"] });
+      void qc.invalidateQueries({ queryKey: ["admin-activity"] });
+    },
+  });
   return (
     <>
       <tr>
@@ -344,10 +363,36 @@ function UserRows({
             </button>
           )}
         </td>
+        <td>
+          {confirmRemove ? (
+            <span className="flex items-center gap-2 flex-wrap">
+              <span className="sub">Delete this account and all its entries?</span>
+              <button
+                className="btn"
+                style={{ color: "var(--critical)", borderColor: "var(--critical)" }}
+                disabled={removeUser.isPending}
+                onClick={() => removeUser.mutate()}
+              >
+                {removeUser.isPending ? "Removing…" : "Confirm"}
+              </button>
+              <button className="btn" onClick={() => setConfirmRemove(false)}>
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button
+              className="btn"
+              aria-label={`Remove account ${label}`}
+              onClick={() => setConfirmRemove(true)}
+            >
+              Remove
+            </button>
+          )}
+        </td>
       </tr>
       {open ? (
         <tr>
-          <td colSpan={5}>
+          <td colSpan={6}>
             {user.entries.length === 0 ? (
               <Empty>No entries for this member.</Empty>
             ) : (
