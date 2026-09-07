@@ -64,6 +64,13 @@
       "when": 1788781713869,
       "tag": "0008_entries_original_picks",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788782127363,
+      "tag": "0009_restrict_sync_state_to_admins",
+      "breakpoints": true
     }
   ]
 }
