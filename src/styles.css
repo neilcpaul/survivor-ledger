@@ -975,6 +975,39 @@ table.grid tr.expandable:hover th {
   font-weight: 600;
   min-width: 0;
 }
+.news-ticker-item .news-headline {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.news-ticker-item .sub.num {
+  flex-shrink: 0;
+}
+@media (min-width: 640px) {
+  .news-ticker-item .news-headline {
+    -webkit-line-clamp: 1;
+  }
+  .news-ticker-row > .btn:last-child {
+    display: inline-flex;
+  }
+}
+@media (max-width: 639px) {
+  .news-ticker-row > .btn:last-child {
+    display: none;
+  }
+  .news-ticker-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .news-ticker-item .news-headline {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+}
 .news-dots {
   display: flex;
   gap: 6px;
