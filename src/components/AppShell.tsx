@@ -373,18 +373,32 @@ function RailNav({ pathname }: { pathname: string }) {
       </div>
 
       <div className="nav-list" role="tablist" aria-orientation="vertical">
-        {visible.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            role="tab"
-            aria-selected={pathname === item.to}
-            className="nav-item"
-          >
-            <span className="nav-dot" aria-hidden="true" />
-            {item.label}
-          </Link>
-        ))}
+        {visible.map((item) =>
+          item.to ? (
+            <Link
+              key={item.key}
+              to={item.to}
+              role="tab"
+              aria-selected={pathname === item.to}
+              className="nav-item"
+            >
+              <span className="nav-dot" aria-hidden="true" />
+              {item.label}
+            </Link>
+          ) : (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={false}
+              className="nav-item"
+              onClick={openWizard}
+            >
+              <span className="nav-dot" aria-hidden="true" />
+              {item.label}
+            </button>
+          ),
+        )}
       </div>
 
       {overflow.length ? (
@@ -403,19 +417,40 @@ function RailNav({ pathname }: { pathname: string }) {
               <div className="label" style={{ marginBottom: 6 }}>
                 Sections
               </div>
-              {overflow.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  role="menuitem"
-                  aria-selected={pathname === item.to}
-                  className="nav-item"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="nav-dot" aria-hidden="true" />
-                  {item.label}
-                </Link>
-              ))}
+              {overflow.map((item) =>
+                item.to ? (
+                  <Link
+                    key={item.key}
+                    to={item.to}
+                    role="menuitem"
+                    aria-selected={pathname === item.to}
+                    className="nav-item"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="nav-dot" aria-hidden="true" />
+                    {item.label}
+                  </Link>
+                ) : (
+                  <button
+                    key={item.key}
+                    type="button"
+                    role="menuitem"
+                    className="nav-item"
+                    onClick={() => {
+                      setOpen(false);
+                      openWizard();
+                    }}
+                  >
+                    <span className="nav-dot" aria-hidden="true" />
+                    {item.label}
+                  </button>
+                ),
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
             </div>
           ) : null}
         </div>
