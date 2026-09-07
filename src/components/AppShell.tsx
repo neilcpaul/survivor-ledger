@@ -451,15 +451,10 @@ function RailNav({ pathname }: { pathname: string }) {
         </div>
       ) : null}
 
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
       {/* hidden mirror used only to measure natural item widths */}
       <div className="nav-measure" aria-hidden="true" ref={measureRef}>
         {NAV.map((item) => (
-          <span key={item.to} className="nav-item">
+          <span key={item.key} className="nav-item">
             <span className="nav-dot" />
             {item.label}
           </span>
