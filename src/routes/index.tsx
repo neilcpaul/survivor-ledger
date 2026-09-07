@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { SurvivalChart } from "@/components/SurvivalChart";
@@ -6,7 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { NewsTicker } from "@/components/news";
 import { fetchNews } from "@/lib/news";
 import { usePlanCurves, useSurvivor } from "@/lib/survivor-store";
-import { finalOdds, oddsAsOneInN, pct, ppDelta, WEEKS } from "@/lib/survivor";
+import { finalOdds, oddsAsOneInN, pct, ppDelta, survivalCurve, WEEKS } from "@/lib/survivor";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -30,15 +32,35 @@ export const Route = createFileRoute("/")({
   component: SeasonOverview,
 });
 
+const ENTRY_COLORS = ["var(--scenario)", "var(--optimal)", "var(--proposed)", "var(--seq-high)"];
+
 function SeasonOverview() {
-  const { slots, teamsById, loading, currentWeek, editedWeeks, resetPlan, isAnalysis, saveState, entryName } =
-    useSurvivor();
+  const {
+    slots,
+    teamsById,
+    loading,
+    currentWeek,
+    editedWeeks,
+    resetPlan,
+    isAnalysis,
+    saveState,
+    entryName,
+    originalLocked,
+    resetOriginal,
+    otherEntryPlans,
+  } = useSurvivor();
   const curves = usePlanCurves();
+  const [confirmReset, setConfirmReset] = useState(false);
   const { data: news } = useQuery({
     queryKey: ["news", 20],
     queryFn: () => fetchNews(20),
     staleTime: 60_000,
   });
+
+  const otherCurves = useMemo(
+    () => otherEntryPlans.map((e) => ({ ...e, curve: survivalCurve(slots, e.plan) })),
+    [otherEntryPlans, slots],
+  );
 
   const mine = finalOdds(curves.mine);
   const original = finalOdds(curves.original);
@@ -47,6 +69,7 @@ function SeasonOverview() {
     .filter((p) => p.winProb != null)
     .sort((a, b) => (a.winProb ?? 1) - (b.winProb ?? 1))[0];
   const hasPicks = curves.mine.some((p) => p.winProb != null);
+
 
   return (
     <AppShell title="Season Overview">
