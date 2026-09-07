@@ -627,7 +627,7 @@ function Comparator() {
             </div>
             <SurvivalChart
               currentWeek={activeWeek}
-              band={hasProposal ? exactBand(proposedCurve) : undefined}
+              {...(hasProposal ? { band: exactBand(proposedCurve) } : {})}
               series={[
                 { key: "mine", label: "Current plan", color: "var(--accent)", curve: curves.mine },
                 {
