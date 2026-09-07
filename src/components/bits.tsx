@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { pct, tierOf } from "@/lib/survivor";
 
 export function StatCard({
@@ -72,13 +73,15 @@ export function TeamChipLabel({
   abbr,
   logo,
   name,
+  teamId,
 }: {
   abbr: string | null | undefined;
   logo?: string | null | undefined;
   name?: string | null | undefined;
+  teamId?: string | null | undefined;
 }) {
-  return (
-    <span className="flex items-center gap-2 min-w-0">
+  const inner = (
+    <>
       {logo ? (
         <img src={logo} alt="" width={18} height={18} style={{ flexShrink: 0 }} loading="lazy" />
       ) : null}
@@ -86,8 +89,24 @@ export function TeamChipLabel({
         {abbr ?? "—"}
       </span>
       {name ? <span className="sub truncate">{name}</span> : null}
-    </span>
+    </>
   );
+
+  if (teamId) {
+    return (
+      <Link
+        to="/teams/$teamId"
+        params={{ teamId }}
+        className="team-link flex items-center gap-2 min-w-0"
+        onClick={(e: MouseEvent) => e.stopPropagation()}
+        title={name ?? abbr ?? "Team page"}
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return <span className="flex items-center gap-2 min-w-0">{inner}</span>;
 }
 
 export function StatusPill({ status }: { status: string | null | undefined }) {

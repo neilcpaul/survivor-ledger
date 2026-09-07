@@ -11,10 +11,10 @@ import {
   type ReactNode,
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getOptimalPlan } from "./access.functions";
 import {
   buildSlots,
   greedyPlan,
-  optimalPlan,
   survivalCurve,
   WEEKS,
   type Game,
@@ -79,6 +79,9 @@ type Ctx = {
   editedWeeks: Set<number>;
   optimal: Plan;
   currentWeek: number;
+  tier: "basic" | "analysis";
+  isAnalysis: boolean;
+  isAdmin: boolean;
   session: Session | null;
   displayName: string | null;
   entries: Entry[];
@@ -132,20 +135,35 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  const profileQ = useQuery({
+    queryKey: ["profile", session?.user?.id ?? "anon"],
+    enabled: !!session?.user,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name, tier, is_admin")
+        .eq("id", session!.user.id)
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+
+  // Signed-out visitors are treated as basic tier.
+  const tier: "basic" | "analysis" =
+    profileQ.data?.tier === "analysis" && session?.user ? "analysis" : "basic";
+  const isAnalysis = tier === "analysis";
+  const isAdmin = !!session?.user && profileQ.data?.is_admin === true;
+
   useEffect(() => {
     if (!session?.user) {
       setDisplayName(null);
       return;
     }
-    supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", session.user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        setDisplayName(data?.display_name ?? session.user.email?.split("@")[0] ?? "Signed in");
-      });
-  }, [session?.user?.id]);
+    setDisplayName(
+      profileQ.data?.display_name ?? session.user.email?.split("@")[0] ?? "Signed in",
+    );
+  }, [session?.user?.id, profileQ.data?.display_name]);
 
   /* ---------------- reference data ---------------- */
   const teamsQ = useQuery({ queryKey: ["teams"], queryFn: fetchTeams, staleTime: 5 * 60_000 });
@@ -162,8 +180,18 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   const games = useMemo(() => gamesQ.data ?? [], [gamesQ.data]);
   const teamsById = useMemo(() => new Map(teams.map((t) => [t.id, t])), [teams]);
   const slots = useMemo(() => buildSlots(games), [games]);
-  const teamIds = useMemo(() => teams.map((t) => t.id), [teams]);
-  const optimal = useMemo(() => optimalPlan(slots, teamIds), [slots, teamIds]);
+  // The optimal (Kuhn–Munkres) plan is analysis-tier only and is computed and
+  // authorised server-side; a basic-tier session never receives it.
+  const optimalQ = useQuery({
+    queryKey: ["optimal-plan", session?.user?.id ?? "anon"],
+    enabled: isAnalysis,
+    staleTime: 5 * 60_000,
+    queryFn: async () => (await getOptimalPlan()).plan ?? {},
+  });
+  const optimal = useMemo<Plan>(
+    () => (isAnalysis ? (optimalQ.data ?? {}) : {}),
+    [isAnalysis, optimalQ.data],
+  );
 
   const currentWeek = useMemo(() => {
     const nowIso = new Date(now).toISOString();
@@ -201,13 +229,26 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
 
 
   /* ------------- seed a starting plan from the data ------------- */
+  // Analysis tier starts from a computed plan; basic tier (and guests) start
+  // from a completely blank ledger and fill it in themselves.
   useEffect(() => {
-    if (seeded.current || slots.size === 0) return;
+    if (seeded.current || slots.size === 0 || profileQ.isLoading) return;
     seeded.current = true;
-    const seed = greedyPlan(slots);
+    const seed = isAnalysis ? greedyPlan(slots) : {};
     setPlan(seed);
     setOriginalPlan(seed);
-  }, [slots]);
+  }, [slots, isAnalysis, profileQ.isLoading]);
+
+  // Tier can resolve after the first seed (sign-in / sign-out): re-seed.
+  const seededTier = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (slots.size === 0 || profileQ.isLoading) return;
+    if (seededTier.current === isAnalysis) return;
+    seededTier.current = isAnalysis;
+    const seed = isAnalysis ? greedyPlan(slots) : {};
+    setPlan(seed);
+    setOriginalPlan(seed);
+  }, [isAnalysis, slots, profileQ.isLoading]);
 
   /* ------------- load a signed-in entry's saved picks ------------- */
   useEffect(() => {
@@ -219,7 +260,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
       .eq("entry_id", entryId)
       .then(({ data }) => {
         if (cancelled) return;
-        const base = greedyPlan(slots);
+        const base = isAnalysis ? greedyPlan(slots) : {};
         const saved: Plan = { ...base };
         for (const row of data ?? []) {
           if (row.team_id) saved[row.week] = row.team_id;
@@ -231,7 +272,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [entryId, slots]);
+  }, [entryId, slots, isAnalysis]);
 
   const setPick = useCallback(
     (week: number, teamId: string | undefined) => {
@@ -383,6 +424,9 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     editedWeeks,
     optimal,
     currentWeek,
+    tier,
+    isAnalysis,
+    isAdmin,
     session,
     displayName,
     entries,

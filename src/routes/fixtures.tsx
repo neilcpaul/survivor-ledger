@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { Empty, StatusPill, TeamChipLabel, WinPill } from "@/components/bits";
+import { Empty, TeamChipLabel, WinPill } from "@/components/bits";
+import { TeamDetailStack } from "@/components/TeamDetail";
 import { useSurvivor } from "@/lib/survivor-store";
-import { pct, WEEKS, type Team } from "@/lib/survivor";
-import { supabase } from "@/integrations/supabase/client";
+import { pct, WEEKS } from "@/lib/survivor";
 
 export const Route = createFileRoute("/fixtures")({
   head: () => ({
@@ -29,25 +28,6 @@ export const Route = createFileRoute("/fixtures")({
   component: Fixtures,
 });
 
-const PRIMARY_POSITIONS = ["QB", "RB", "WR", "TE"];
-
-type Injury = {
-  id: string;
-  team_id: string | null;
-  player_name: string | null;
-  position: string | null;
-  status: string | null;
-  detail: string | null;
-};
-
-type RosterPlayer = {
-  id: string;
-  team_id: string | null;
-  name: string | null;
-  position: string | null;
-  jersey_number: string | null;
-};
-
 function fmtKick(iso: string | null): string {
   if (!iso) return "TBD";
   return new Date(iso).toLocaleString(undefined, {
@@ -57,156 +37,6 @@ function fmtKick(iso: string | null): string {
     hour: "numeric",
     minute: "2-digit",
   });
-}
-
-function useTeamDetail(teamIds: string[], enabled: boolean) {
-  const key = [...teamIds].sort().join(",");
-  return useQuery({
-    queryKey: ["team-detail", key],
-    enabled: enabled && teamIds.length > 0,
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const [inj, ros] = await Promise.all([
-        supabase
-          .from("injuries")
-          .select("id, team_id, player_name, position, status, detail")
-          .in("team_id", teamIds),
-        supabase
-          .from("roster_players")
-          .select("id, team_id, name, position, jersey_number")
-          .in("team_id", teamIds),
-      ]);
-      return {
-        injuries: (inj.data ?? []) as Injury[],
-        roster: (ros.data ?? []) as RosterPlayer[],
-      };
-    },
-  });
-}
-
-function TeamPanel({
-  team,
-  injuries,
-  roster,
-}: {
-  team: Team | undefined;
-  injuries: Injury[];
-  roster: RosterPlayer[];
-}) {
-  const groups = useMemo(() => {
-    const map = new Map<string, RosterPlayer[]>();
-    for (const p of roster) {
-      const pos = p.position ?? "—";
-      const list = map.get(pos) ?? [];
-      list.push(p);
-      map.set(pos, list);
-    }
-    for (const list of map.values()) {
-      list.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
-    }
-    const primary = PRIMARY_POSITIONS.flatMap((position) => {
-      const players = map.get(position);
-      return players ? ([[position, players]] as const) : [];
-    });
-    const rest = [...map.entries()]
-      .filter(([p]) => !PRIMARY_POSITIONS.includes(p))
-      .sort((a, b) => a[0].localeCompare(b[0]));
-    return [...primary, ...rest];
-  }, [roster]);
-
-  const statusByPlayer = useMemo(
-    () =>
-      new Map(
-        injuries.map((injury) => [
-          (injury.player_name ?? "").trim().toLocaleLowerCase(),
-          injury.status,
-        ]),
-      ),
-    [injuries],
-  );
-
-  return (
-    <section className="fixture-team-panel">
-      <header className="fixture-team-head">
-        <TeamChipLabel abbr={team?.abbr} logo={team?.logo_url} name={team?.name} />
-        <span className="sub num">{roster.length} players</span>
-      </header>
-
-      <div className="fixture-detail-section">
-        <div className="fixture-section-head">
-          <div className="label">Injuries · current status</div>
-          <span className="sub num">{injuries.length}</span>
-        </div>
-        <div className="injury-list">
-          {injuries.length === 0 ? (
-            <span className="sub">No reported injuries.</span>
-          ) : (
-            injuries.map((i) => (
-              <div key={i.id} className="injury-item">
-                <span className="injury-position num">{i.position ?? "—"}</span>
-                <span className="player-name" title={i.player_name ?? "Unknown"}>
-                  {i.player_name ?? "Unknown"}
-                </span>
-                <span className="status-wrap">
-                  <StatusPill status={i.status} />
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="fixture-detail-section">
-        <div className="fixture-section-head">
-          <div className="label">Full roster</div>
-          <span className="sub">Position · No. · Player · Status</span>
-        </div>
-        <div className="roster-groups">
-          {groups.map(([pos, players]) => (
-            <div className="roster-group" key={pos}>
-              <div className="roster-position num">{pos}</div>
-              <div className="roster-player-list">
-                {players.map((p) => (
-                  <div key={p.id} className="roster-player">
-                    <span className="num">{p.jersey_number ?? "—"}</span>
-                    <span className="player-name" title={p.name ?? "Unknown"}>
-                      {p.name ?? "Unknown"}
-                    </span>
-                    <span className="status-wrap">
-                      <StatusPill
-                        status={statusByPlayer.get((p.name ?? "").trim().toLocaleLowerCase()) ?? "Active"}
-                      />
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function DetailRowPanel({ homeId, awayId }: { homeId: string | null; awayId: string | null }) {
-  const { teamsById } = useSurvivor();
-  const ids = [homeId, awayId].filter((x): x is string => !!x);
-  const { data, isLoading } = useTeamDetail(ids, true);
-
-  if (isLoading) return <Empty>Loading injuries and rosters…</Empty>;
-
-  return (
-    <div className="fixture-team-stack">
-      {ids.map((id) => (
-        <TeamPanel
-          key={id}
-          team={teamsById.get(id)}
-          injuries={(data?.injuries ?? []).filter((i) => i.team_id === id)}
-          roster={(data?.roster ?? []).filter((r) => r.team_id === id)}
-        />
-      ))}
-    </div>
-  );
 }
 
 function Fixtures() {
@@ -349,6 +179,7 @@ function Fixtures() {
                                 abbr={away?.abbr}
                                 logo={away?.logo_url}
                                 name={away?.name}
+                                teamId={away?.id}
                               />
                             </td>
                             <td>
@@ -356,6 +187,7 @@ function Fixtures() {
                                 abbr={home?.abbr}
                                 logo={home?.logo_url}
                                 name={home?.name}
+                                teamId={home?.id}
                               />
                             </td>
                             <td>
@@ -434,9 +266,8 @@ function Fixtures() {
                   </button>
                 </div>
                 <div className="drawer-body">
-                  <DetailRowPanel
-                    homeId={drawerGame.home_team_id}
-                    awayId={drawerGame.away_team_id}
+                  <TeamDetailStack
+                    teamIds={[drawerGame.away_team_id, drawerGame.home_team_id]}
                   />
                 </div>
               </div>

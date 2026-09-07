@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { SurvivalChart } from "@/components/SurvivalChart";
 import { Delta, Empty, StatCard, TeamChipLabel, WinPill } from "@/components/bits";
@@ -36,8 +36,15 @@ export const Route = createFileRoute("/comparator")({
 });
 
 function Comparator() {
-  const { slots, plan, teamsById, loading, setPick, currentWeek, editedWeeks, resetPlan, optimal } =
+  const { slots, plan, teamsById, loading, setPick, currentWeek, editedWeeks, resetPlan, optimal, isAnalysis } =
     useSurvivor();
+  const navigate = useNavigate();
+
+  // Alternatives are scored against the optimal solver, so this page is
+  // analysis-only; anyone else who lands here goes back to the overview.
+  useEffect(() => {
+    if (!isAnalysis) void navigate({ to: "/" });
+  }, [isAnalysis, navigate]);
   const [week, setWeek] = useState<number | null>(null);
   const activeWeek = week ?? currentWeek;
   const curves = usePlanCurves();
@@ -48,6 +55,7 @@ function Comparator() {
   );
 
   const baseline = finalOdds(curves.mine);
+
 
   const scored = useMemo(
     () =>

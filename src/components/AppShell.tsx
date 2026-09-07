@@ -3,13 +3,25 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { useSurvivor } from "@/lib/survivor-store";
 
-const NAV = [
+const ALL_NAV = [
   { to: "/", label: "Season Overview" },
   { to: "/inventory", label: "Team Inventory" },
   { to: "/heatmap", label: "Matchup Heatmap" },
   { to: "/comparator", label: "Pick Comparator" },
   { to: "/fixtures", label: "Fixtures" },
+  { to: "/news", label: "News" },
+  { to: "/admin", label: "Admin" },
 ] as const;
+
+type NavItem = (typeof ALL_NAV)[number];
+
+function useNav(): NavItem[] {
+  const { isAnalysis, isAdmin } = useSurvivor();
+  return ALL_NAV.filter(
+    (item) =>
+      (item.to !== "/comparator" || isAnalysis) && (item.to !== "/admin" || isAdmin),
+  );
+}
 
 function agoLabel(iso: string | null): string {
   if (!iso) return "never synced";
@@ -232,7 +244,11 @@ function AuthWidget() {
 
   if (!session?.user) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="badge" title="Your picks are stored in this browser only">
+          <span className="dot" style={{ background: "var(--caution)" }} aria-hidden="true" />
+          Not saved · local to this device
+        </span>
         <Link to="/auth" className="btn primary">
           Sign in
         </Link>
@@ -258,7 +274,7 @@ function AuthWidget() {
           aria-hidden="true"
         />
         {saveState === "synced"
-          ? "Saved"
+          ? `Synced to ${entryName ?? "your entry"}`
           : saveState === "saving"
             ? "Saving…"
             : saveState === "error"
@@ -278,6 +294,7 @@ function AuthWidget() {
 }
 
 function RailNav({ pathname }: { pathname: string }) {
+  const NAV = useNav();
   const railRef = useRef<HTMLElement | null>(null);
   const brandRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLDivElement | null>(null);
@@ -321,7 +338,7 @@ function RailNav({ pathname }: { pathname: string }) {
       window.removeEventListener("resize", recalc);
       ro.disconnect();
     };
-  }, []);
+  }, [NAV.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -431,7 +448,13 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
         <header className="topbar">
           <div className="flex items-center gap-3 min-w-0 flex-wrap">
             <h1 className="truncate">{title}</h1>
-            <span className="badge">W{currentWeek} · R</span>
+            <span
+              className="badge"
+              title={`Week ${currentWeek} of 18 · Regular season`}
+              aria-label={`Week ${currentWeek} of 18 · Regular season`}
+            >
+              Week {currentWeek} of 18 · Regular season
+            </span>
             {syncFailed || dataError ? (
               <span className="pill critical">Data may be stale</span>
             ) : null}
