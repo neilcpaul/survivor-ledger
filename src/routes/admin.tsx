@@ -136,6 +136,26 @@ function AdminPage() {
 
   return (
     <AppShell title="Administration">
+      <section className="card" style={{ marginBottom: 16 }}>
+        <div className="card-head">
+          <div>
+            <h2>Site settings</h2>
+            <p className="sub">Options that affect every visitor.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span>Show welcome wizard to new visitors</span>
+          <button
+            className={`btn${welcomeWizardEnabled ? " primary" : ""}`}
+            aria-pressed={welcomeWizardEnabled}
+            disabled={wizardToggle.isPending}
+            onClick={() => wizardToggle.mutate(!welcomeWizardEnabled)}
+          >
+            {welcomeWizardEnabled ? "On" : "Off"}
+          </button>
+        </div>
+      </section>
+
       <section className="card">
         <div className="card-head">
           <div>
