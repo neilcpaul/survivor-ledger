@@ -10,6 +10,9 @@ import { eligibleTeams, pct, WEEKS, type Plan } from "@/lib/survivor";
 
 type Phase = "hidden" | "welcome" | "wizard" | "done";
 
+/** Fired from the nav to open the wizard on demand, for anyone. */
+export const OPEN_WIZARD_EVENT = "survivor:open-wizard";
+
 function markDismissed() {
   try {
     window.sessionStorage.setItem(WELCOME_DISMISSED_KEY, "1");
@@ -27,9 +30,10 @@ function alreadyDismissed(): boolean {
 }
 
 /**
- * First-visit welcome modal and pick wizard. Only ever shown to a signed-out
- * visitor with no local picks who hasn't closed it this session, and only when
- * the admin switch is on.
+ * First-visit welcome modal and pick wizard. Shown automatically to a signed-out
+ * visitor with no local picks who hasn't closed it this session (and only when
+ * the admin switch is on), or on demand from the "Pick Wizard" nav item — which
+ * walks every week and may overwrite existing picks.
  */
 export function WelcomeWizard() {
   const { session, slots, teamsById, setPick, plan, welcomeWizardEnabled, loading } = useSurvivor();
@@ -40,6 +44,8 @@ export function WelcomeWizard() {
   const [picked, setPicked] = useState<Plan>({});
   const [stepIndex, setStepIndex] = useState(0);
   const [showAll, setShowAll] = useState(false);
+  const [steps, setSteps] = useState<number[]>([]);
+  const [manual, setManual] = useState(false);
   const decided = useRef(false);
 
   useEffect(() => {
@@ -53,36 +59,47 @@ export function WelcomeWizard() {
     setPhase("welcome");
   }, [loading, slots.size, session?.user, welcomeWizardEnabled]);
 
-  // A visitor who signs in mid-session never keeps the modal up.
+  // A visitor who signs in mid-session never keeps the automatic modal up.
   useEffect(() => {
-    if (session?.user) setPhase("hidden");
-  }, [session?.user]);
+    if (session?.user && !manual) setPhase("hidden");
+  }, [session?.user, manual]);
+
+  useEffect(() => {
+    function onOpen() {
+      setManual(true);
+      setPicked({});
+      setStepIndex(0);
+      setShowAll(false);
+      setSteps([...WEEKS]);
+      setPhase("wizard");
+    }
+    window.addEventListener(OPEN_WIZARD_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_WIZARD_EVENT, onOpen);
+  }, []);
 
   const close = useCallback(() => {
     markDismissed();
+    setManual(false);
     setPhase("hidden");
   }, []);
 
-  const startWeeks = useMemo(
-    () => WEEKS.filter((w) => !plan[w]),
-    // Frozen when the wizard opens: the step list must not shrink as picks land.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [phase === "wizard"],
-  );
-
   const current = useMemo(() => ({ ...plan, ...picked }), [plan, picked]);
-  const week = startWeeks[stepIndex];
+  const week = steps[stepIndex];
+
+  const finish = useCallback(() => {
+    if (manual || session?.user) close();
+    else setPhase("done");
+  }, [manual, session?.user, close]);
 
   const choose = useCallback(
     (w: number, teamId: string) => {
       setPick(w, teamId);
-      const next = { ...current, [w]: teamId };
       setPicked((prev) => ({ ...prev, [w]: teamId }));
       setShowAll(false);
-      if (WEEKS.every((x) => next[x])) setPhase("done");
+      if (stepIndex + 1 >= steps.length) finish();
       else setStepIndex((i) => i + 1);
     },
-    [setPick, current],
+    [setPick, stepIndex, steps.length, finish],
   );
 
   /** Deliberately greedy, week by week — no lookahead, not the solver. */
@@ -100,8 +117,9 @@ export function WelcomeWizard() {
       setPick(w, best.teamId);
     }
     setPicked(next);
-    setPhase("done");
-  }, [current, slots, setPick]);
+    if (manual || session?.user) close();
+    else setPhase("done");
+  }, [current, slots, setPick, manual, session?.user, close]);
 
   const goAuth = useCallback(() => {
     stashWizardPlan(current);
@@ -114,6 +132,12 @@ export function WelcomeWizard() {
 
   const options = week ? eligibleTeams(slots, current, week) : [];
   const top5 = options.slice(0, 5);
+  const oppLabel = (s: { opponentId: string | null; isHome: boolean }) => {
+    const opp = s.opponentId ? teamsById.get(s.opponentId) : null;
+    const abbr = opp?.abbr ?? opp?.name ?? "—";
+    return `${s.isHome ? "vs" : "@"} ${abbr}`;
+  };
+
 
   return (
     <div className="welcome-overlay" role="dialog" aria-modal="true" aria-label="Welcome">
