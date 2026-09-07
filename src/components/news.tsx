@@ -178,9 +178,11 @@ export function NewsTicker({ articles }: { articles: Article[] }) {
 function TruncatedBadges({
   teamIds,
   publishedAt,
+  showTime = true,
 }: {
   teamIds: string[];
   publishedAt: string | null;
+  showTime?: boolean;
 }) {
   const visibleRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
@@ -198,17 +200,17 @@ function TruncatedBadges({
       const available = visible.clientWidth;
       const measureRect = measure.getBoundingClientRect();
       const children = Array.from(measure.children) as HTMLElement[];
-      const timeWidth = children[0]?.getBoundingClientRect().width ?? 0;
+      const timeWidth = showTime ? (children[0]?.getBoundingClientRect().width ?? 0) : 0;
       const plusEl = children[children.length - 1];
       const plusWidth = plusEl ? plusEl.getBoundingClientRect().width : 0;
-      const badgeChildren = children.slice(1, -1);
+      const badgeChildren = showTime ? children.slice(1, -1) : children.slice(0, -1);
 
       let count = 0;
       for (let i = 0; i < badgeChildren.length; i++) {
         const right =
           badgeChildren[i]!.getBoundingClientRect().right - measureRect.left;
         const needsPlus = i < badgeChildren.length - 1;
-        const required = right + (needsPlus ? plusWidth : 0);
+        const required = right + (needsPlus ? plusWidth : 0) + (showTime ? timeWidth : 0);
         if (required <= available) {
           count = i + 1;
         } else {
@@ -223,7 +225,7 @@ function TruncatedBadges({
     if (visibleRef.current) ro.observe(visibleRef.current);
     if (measureRef.current) ro.observe(measureRef.current);
     return () => ro.disconnect();
-  }, [teamIds, publishedAt]);
+  }, [teamIds, publishedAt, showTime]);
 
   const hidden = teamIds.slice(visibleCount);
   const visible = teamIds.slice(0, visibleCount);
