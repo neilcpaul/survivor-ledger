@@ -52,6 +52,10 @@ function SeasonOverview() {
     otherEntryPlans,
   } = useSurvivor();
   const curves = usePlanCurves();
+  const openWizard = useCallback(
+    () => window.dispatchEvent(new CustomEvent(OPEN_WIZARD_EVENT)),
+    [],
+  );
   const [confirmReset, setConfirmReset] = useState(false);
   const { data: news } = useQuery({
     queryKey: ["news", 20],
