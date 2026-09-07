@@ -13,7 +13,7 @@ export function StatCard({
   value: ReactNode;
   sub?: ReactNode;
   tone?: "accent" | "optimal" | "scenario" | "ink";
-  onClick?: () => void;
+  onClick?: (() => void) | undefined;
 }) {
   const color =
     tone === "accent"
