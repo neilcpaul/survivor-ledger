@@ -182,6 +182,7 @@ function AdminPage() {
                   <th scope="col">Joined</th>
                   <th scope="col">Access</th>
                   <th scope="col">Administrator</th>
+                  <th scope="col">Account</th>
                 </tr>
               </thead>
               <tbody>
