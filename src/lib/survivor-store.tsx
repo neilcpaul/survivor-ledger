@@ -54,8 +54,10 @@ async function fetchGames(): Promise<Game[]> {
   return (data ?? []) as Game[];
 }
 
-// sync_state is readable by signed-in users only (it holds internal sync errors),
-// so guests must not request it — an anon request would 401 on every poll.
+// sync_state holds internal job errors, so only admins can read it. Everyone
+// else (guests included) falls back to the public games freshness timestamp;
+// a non-admin read simply returns no row rather than failing.
+
 async function fetchSyncState() {
   const { data } = await supabase
     .from("sync_state")
