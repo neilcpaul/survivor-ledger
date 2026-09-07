@@ -7,6 +7,7 @@ import { WeekLedgerTable } from "@/components/WeekLedgerTable";
 import {
   adminActivityFeed,
   adminDeleteEntry,
+  adminDeleteUser,
   adminGetEntryPicks,
   adminListUsers,
   adminRenameEntry,
