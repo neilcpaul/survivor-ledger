@@ -104,6 +104,16 @@ function AdminPage() {
       void qc.invalidateQueries({ queryKey: ["admin-activity"] });
     },
   });
+  const wizardToggle = useMutation({
+    mutationFn: (enabled: boolean) => adminSetWelcomeWizard({ data: { enabled } }),
+    onError: (e: Error) => setError(e.message),
+    onSuccess: () => {
+      setError(null);
+      void qc.invalidateQueries({ queryKey: ["site-settings"] });
+      void qc.invalidateQueries({ queryKey: ["admin-activity"] });
+    },
+  });
+
 
   if (!isAdmin) {
     return (
