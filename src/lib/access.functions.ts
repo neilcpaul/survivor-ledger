@@ -11,6 +11,7 @@ export type AdminUserRow = {
   display_name: string | null;
   tier: "basic" | "analysis";
   is_admin: boolean;
+  entries: AdminEntryRow[];
 };
 
 function publicClient() {
@@ -98,6 +99,73 @@ async function assertAdmin(userId: string) {
   if (data?.is_admin !== true) throw new Error("Forbidden");
 }
 
+/** One row in the unified activity feed (activity_log + auth sign-ins). */
+export type ActivityDetail = Record<string, string | number | boolean | null>;
+
+export type ActivityRow = {
+  id: string;
+  created_at: string;
+  actor_type: "user" | "admin" | "system";
+  actor_id: string | null;
+  actor_email: string | null;
+  event_type: string;
+  target_user_id: string | null;
+  target_user_email: string | null;
+  target_entry_id: string | null;
+  target_entry_name: string | null;
+  detail: ActivityDetail;
+};
+
+export type AdminEntryRow = {
+  id: string;
+  name: string;
+  created_at: string;
+  weeks_filled: number;
+};
+
+async function writeActivity(row: {
+  actor_type: "user" | "admin" | "system";
+  actor_id: string | null;
+  event_type: string;
+  target_user_id?: string | null;
+  target_entry_id?: string | null;
+  detail?: ActivityDetail;
+}) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin.from("activity_log").insert({
+    actor_type: row.actor_type,
+    actor_id: row.actor_id,
+    event_type: row.event_type,
+    target_user_id: row.target_user_id ?? null,
+    target_entry_id: row.target_entry_id ?? null,
+    detail: (row.detail ?? {}) as never,
+  });
+}
+
+/**
+ * A signed-in user recording their own activity. The actor is always taken
+ * from the validated bearer token, never from the request body.
+ */
+export const logUserActivity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: { eventType: string; entryId?: string | null; detail?: ActivityDetail }) => {
+      if (!input?.eventType) throw new Error("eventType is required");
+      return input;
+    },
+  )
+  .handler(async ({ data, context }) => {
+    await writeActivity({
+      actor_type: "user",
+      actor_id: context.userId,
+      event_type: data.eventType,
+      target_user_id: context.userId,
+      target_entry_id: data.entryId ?? null,
+      detail: data.detail ?? {},
+    });
+    return { ok: true };
+  });
+
 export const adminListUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdminUserRow[]> => {
@@ -105,10 +173,28 @@ export const adminListUsers = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
     if (error) throw error;
-    const { data: profiles } = await supabaseAdmin
-      .from("profiles")
-      .select("id, display_name, tier, is_admin");
+    const [{ data: profiles }, { data: entries }, { data: picks }] = await Promise.all([
+      supabaseAdmin.from("profiles").select("id, display_name, tier, is_admin"),
+      supabaseAdmin.from("entries").select("id, user_id, name, created_at"),
+      supabaseAdmin.from("picks").select("entry_id, team_id"),
+    ]);
     const byId = new Map((profiles ?? []).map((p) => [p.id, p]));
+    const filled = new Map<string, number>();
+    for (const p of picks ?? []) {
+      if (!p.team_id) continue;
+      filled.set(p.entry_id, (filled.get(p.entry_id) ?? 0) + 1);
+    }
+    const entriesByUser = new Map<string, AdminEntryRow[]>();
+    for (const e of entries ?? []) {
+      const list = entriesByUser.get(e.user_id) ?? [];
+      list.push({
+        id: e.id,
+        name: e.name,
+        created_at: e.created_at,
+        weeks_filled: Math.min(18, filled.get(e.id) ?? 0),
+      });
+      entriesByUser.set(e.user_id, list);
+    }
     return users.users.map((u) => {
       const p = byId.get(u.id);
       return {
@@ -118,8 +204,116 @@ export const adminListUsers = createServerFn({ method: "GET" })
         display_name: p?.display_name ?? null,
         tier: (p?.tier as "basic" | "analysis") ?? "basic",
         is_admin: p?.is_admin ?? false,
+        entries: (entriesByUser.get(u.id) ?? []).sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+        ),
       };
     });
+  });
+
+/**
+ * One entry's stored team selections plus its locked baseline. Probabilities
+ * are never returned frozen — the caller re-derives them from today's synced
+ * odds, exactly as the entry's owner sees on their own Week Ledger.
+ */
+export const adminGetEntryPicks = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { entryId: string }) => {
+    if (!input?.entryId) throw new Error("entryId is required");
+    return input;
+  })
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{
+      picks: Record<number, string>;
+      originalPicks: Record<number, string>;
+      originalLocked: boolean;
+    }> => {
+      await assertAdmin(context.userId);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const [{ data: entry }, { data: rows }] = await Promise.all([
+        supabaseAdmin
+          .from("entries")
+          .select("original_picks, original_locked_at")
+          .eq("id", data.entryId)
+          .maybeSingle(),
+        supabaseAdmin.from("picks").select("week, team_id").eq("entry_id", data.entryId),
+      ]);
+      const picks: Record<number, string> = {};
+      for (const r of rows ?? []) if (r.team_id) picks[r.week] = r.team_id;
+      const originalPicks: Record<number, string> = {};
+      const raw = entry?.original_picks;
+      if (raw && typeof raw === "object") {
+        for (const [w, t] of Object.entries(raw as Record<string, unknown>)) {
+          if (typeof t === "string") originalPicks[Number(w)] = t;
+        }
+      }
+      return { picks, originalPicks, originalLocked: !!entry?.original_locked_at };
+    },
+  );
+
+export const adminRenameEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { entryId: string; name: string }) => {
+    if (!input?.entryId || !input.name?.trim()) throw new Error("entryId and name are required");
+    return { entryId: input.entryId, name: input.name.trim().slice(0, 120) };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: before } = await supabaseAdmin
+      .from("entries")
+      .select("name, user_id")
+      .eq("id", data.entryId)
+      .maybeSingle();
+    const { error } = await supabaseAdmin
+      .from("entries")
+      .update({ name: data.name })
+      .eq("id", data.entryId);
+    if (error) throw error;
+    await writeActivity({
+      actor_type: "admin",
+      actor_id: context.userId,
+      event_type: "entry_rename",
+      target_user_id: before?.user_id ?? null,
+      target_entry_id: data.entryId,
+      detail: { from: before?.name ?? null, to: data.name },
+    });
+    return { ok: true };
+  });
+
+/**
+ * Unlike the self-service delete, an admin may remove a user's only entry —
+ * the app already handles the zero-entries state for that user.
+ */
+export const adminDeleteEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { entryId: string }) => {
+    if (!input?.entryId) throw new Error("entryId is required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: before } = await supabaseAdmin
+      .from("entries")
+      .select("name, user_id")
+      .eq("id", data.entryId)
+      .maybeSingle();
+    await supabaseAdmin.from("picks").delete().eq("entry_id", data.entryId);
+    const { error } = await supabaseAdmin.from("entries").delete().eq("id", data.entryId);
+    if (error) throw error;
+    await writeActivity({
+      actor_type: "admin",
+      actor_id: context.userId,
+      event_type: "entry_delete",
+      target_user_id: before?.user_id ?? null,
+      target_entry_id: data.entryId,
+      detail: { name: before?.name ?? null },
+    });
+    return { ok: true };
   });
 
 export const adminSetAccess = createServerFn({ method: "POST" })
@@ -148,7 +342,103 @@ export const adminSetAccess = createServerFn({ method: "POST" })
     if (typeof data.isAdmin === "boolean") patch.is_admin = data.isAdmin;
     if (!Object.keys(patch).length) return { ok: true };
 
+    const { data: before } = await supabaseAdmin
+      .from("profiles")
+      .select("tier, is_admin")
+      .eq("id", data.userId)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin.from("profiles").update(patch).eq("id", data.userId);
     if (error) throw error;
+
+    if (data.tier) {
+      await writeActivity({
+        actor_type: "admin",
+        actor_id: context.userId,
+        event_type: "tier_change",
+        target_user_id: data.userId,
+        detail: { from: before?.tier ?? null, to: data.tier },
+      });
+    }
+    if (typeof data.isAdmin === "boolean") {
+      await writeActivity({
+        actor_type: "admin",
+        actor_id: context.userId,
+        event_type: "admin_toggle",
+        target_user_id: data.userId,
+        detail: { from: before?.is_admin ?? null, to: data.isAdmin },
+      });
+    }
     return { ok: true };
   });
+
+/**
+ * The unified feed: activity_log merged with Supabase Auth's own sign-in
+ * records, newest first. Logins are never duplicated into activity_log.
+ */
+export const adminActivityFeed = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { limit?: number } | undefined) => {
+    const n = Number(input?.limit ?? 200);
+    return { limit: Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), 1), 1000) : 200 };
+  })
+  .handler(async ({ data, context }): Promise<ActivityRow[]> => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const [{ data: logRows }, logins, { data: users }, { data: entries }] = await Promise.all([
+      supabaseAdmin
+        .from("activity_log")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(data.limit),
+      supabaseAdmin.rpc("admin_recent_logins", { _limit: data.limit }),
+      supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }),
+      supabaseAdmin.from("entries").select("id, name"),
+    ]);
+
+    const emailById = new Map((users?.users ?? []).map((u) => [u.id, u.email ?? null]));
+    const entryNameById = new Map((entries ?? []).map((e) => [e.id, e.name]));
+
+    const fromLog: ActivityRow[] = (logRows ?? []).map((r) => ({
+      id: r.id,
+      created_at: r.created_at,
+      actor_type: r.actor_type as ActivityRow["actor_type"],
+      actor_id: r.actor_id,
+      actor_email: r.actor_id ? (emailById.get(r.actor_id) ?? null) : null,
+      event_type: r.event_type,
+      target_user_id: r.target_user_id,
+      target_user_email: r.target_user_id ? (emailById.get(r.target_user_id) ?? null) : null,
+      target_entry_id: r.target_entry_id,
+      target_entry_name: r.target_entry_id
+        ? (entryNameById.get(r.target_entry_id) ??
+          ((r.detail as ActivityDetail | null)?.["name"] as string | undefined) ??
+          null)
+        : null,
+      detail: (r.detail as ActivityDetail) ?? {},
+    }));
+
+    const loginRows = (logins.data ?? []) as {
+      id: string;
+      user_id: string | null;
+      created_at: string;
+    }[];
+    const fromAuth: ActivityRow[] = loginRows.map((r) => ({
+      id: `login-${r.id}`,
+      created_at: r.created_at,
+      actor_type: "user",
+      actor_id: r.user_id,
+      actor_email: r.user_id ? (emailById.get(r.user_id) ?? null) : null,
+      event_type: "login",
+      target_user_id: r.user_id,
+      target_user_email: r.user_id ? (emailById.get(r.user_id) ?? null) : null,
+      target_entry_id: null,
+      target_entry_name: null,
+      detail: {},
+    }));
+
+    return [...fromLog, ...fromAuth]
+      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
+      .slice(0, data.limit);
+  });
+

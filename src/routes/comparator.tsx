@@ -82,6 +82,7 @@ function Comparator() {
     teamsById,
     loading,
     setPick,
+    logActivity,
     currentWeek,
     editedWeeks,
     resetPlan,
@@ -235,15 +236,17 @@ function Comparator() {
     for (const w of WEEKS) {
       if (pendingWeeks.includes(w)) continue;
       const cur = plan[w];
-      if (cur && target.has(cur)) setPick(w, undefined);
+      if (cur && target.has(cur)) setPick(w, undefined, { log: false });
     }
-    for (const w of pendingWeeks) setPick(w, proposed[w] ?? undefined);
+    for (const w of pendingWeeks) setPick(w, proposed[w] ?? undefined, { log: false });
+    // One summary row for the bulk accept, not one per week.
+    logActivity("strategy_applied", { weeks: pendingWeeks.join(", "), count: pendingWeeks.length });
     setOverrides(() => {
       const next: Record<number, string | null> = {};
       for (const w of WEEKS) next[w] = proposed[w] ?? null;
       return next;
     });
-  }, [pendingWeeks, proposed, setPick, plan]);
+  }, [pendingWeeks, proposed, setPick, plan, logActivity]);
 
 
   const rejectAll = useCallback(() => {

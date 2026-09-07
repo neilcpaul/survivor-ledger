@@ -71,6 +71,13 @@
       "when": 1788782127363,
       "tag": "0009_restrict_sync_state_to_admins",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788783143890,
+      "tag": "0010_activity_log",
+      "breakpoints": true
     }
   ]
 }
