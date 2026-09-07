@@ -784,7 +784,8 @@ table.grid tr.expandable:hover th {
   z-index: 50;
   background: rgba(24, 35, 25, 0.45);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
 }
 
 .fixture-dialog {

@@ -93,8 +93,6 @@ function TeamPanel({
   injuries: Injury[];
   roster: RosterPlayer[];
 }) {
-  const [showAll, setShowAll] = useState(false);
-
   const groups = useMemo(() => {
     const map = new Map<string, RosterPlayer[]>();
     for (const p of roster) {
