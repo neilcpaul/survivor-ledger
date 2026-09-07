@@ -216,6 +216,9 @@ function TruncatedBadges({
           break;
         }
       }
+      // Always show at least the first badge: a single team must never
+      // collapse into a "+1" chip, and the first team always displays.
+      if (count === 0 && badgeChildren.length > 0) count = 1;
       setVisibleCount(count);
     };
 
