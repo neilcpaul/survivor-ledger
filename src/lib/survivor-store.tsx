@@ -196,6 +196,11 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   const [entryId, setEntryId] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan>({});
   const [originalPlan, setOriginalPlan] = useState<Plan>({});
+  const [originalLockedAt, setOriginalLockedAt] = useState<string | null>(null);
+  // Read inside callbacks so a pick write never re-locks an existing baseline.
+  const lockedRef = useRef<string | null>(null);
+  lockedRef.current = originalLockedAt;
+
   const [saveState, setSaveState] = useState<Ctx["saveState"]>("guest");
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshClick, setLastRefreshClick] = useState<number>(0);
