@@ -262,7 +262,11 @@ function SeasonOverview() {
                             : "—"}
                         </td>
                         <td>
-                          <Delta pp={ppDelta(point.cumulative, orig.cumulative)} />
+                          {originalLocked ? (
+                            <Delta pp={ppDelta(point.cumulative, orig.cumulative)} />
+                          ) : (
+                            "—"
+                          )}
                         </td>
                       </tr>
                     );

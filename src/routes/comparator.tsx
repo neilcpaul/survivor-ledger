@@ -87,7 +87,15 @@ function Comparator() {
     resetPlan,
     optimal,
     isAnalysis,
+    originalLocked,
+    otherEntryPlans,
   } = useSurvivor();
+  const otherCurves = useMemo(
+    () => otherEntryPlans.map((e) => ({ ...e, curve: survivalCurve(slots, e.plan) })),
+    [otherEntryPlans, slots],
+  );
+  const ENTRY_COLORS = ["var(--scenario)", "var(--optimal)", "var(--proposed)", "var(--seq-high)"];
+
   const navigate = useNavigate();
 
   // Alternatives are scored against the optimal solver, so this page is
