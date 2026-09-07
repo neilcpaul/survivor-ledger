@@ -11,6 +11,7 @@ export type AdminUserRow = {
   display_name: string | null;
   tier: "basic" | "analysis";
   is_admin: boolean;
+  entries: AdminEntryRow[];
 };
 
 function publicClient() {
