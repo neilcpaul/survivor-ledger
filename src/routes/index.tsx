@@ -83,12 +83,32 @@ function SeasonOverview() {
         <Empty>Loading season data…</Empty>
       ) : (
         <>
+          {!hasPicks ? (
+            <button
+              type="button"
+              className="card select-picks-card"
+              onClick={openWizard}
+              aria-label="Select your picks with the Pick Wizard"
+            >
+              <div className="select-picks-text">
+                <h2>Select your picks</h2>
+                <p className="sub">
+                  Open the Pick Wizard to choose a team for every week.
+                </p>
+              </div>
+              <span className="select-picks-arrow" aria-hidden="true">
+                →
+              </span>
+            </button>
+          ) : null}
+
           <section className="stat-grid" style={{ marginBottom: 16 }}>
             <StatCard
               label="Season survival odds"
               value={hasPicks ? pct(mine, 2) : "—"}
               sub={hasPicks ? oddsAsOneInN(mine) : "Make your first pick"}
               tone="accent"
+              onClick={!hasPicks ? openWizard : undefined}
             />
             <StatCard
               label="vs. original plan"
