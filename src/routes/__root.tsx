@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { SurvivorProvider } from "../lib/survivor-store";
+import { WelcomeWizard } from "../components/WelcomeWizard";
 
 
 function NotFoundComponent() {
@@ -137,6 +138,7 @@ function RootComponent() {
       <SurvivorProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
+        <WelcomeWizard />
       </SurvivorProvider>
     </QueryClientProvider>
   );
