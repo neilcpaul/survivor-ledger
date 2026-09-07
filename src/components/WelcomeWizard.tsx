@@ -31,14 +31,6 @@ function alreadyDismissed(): boolean {
   }
 }
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
-  const el = target instanceof HTMLElement ? target : null;
-  if (!el) return false;
-  const tag = el.tagName;
-  if (["BUTTON", "A", "SELECT", "INPUT", "TEXTAREA"].includes(tag)) return true;
-  if (el.closest("button, a, select, input, textarea, [role='button']")) return true;
-  return false;
-}
 
 
 /**
