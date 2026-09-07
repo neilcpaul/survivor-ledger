@@ -36,6 +36,13 @@
       "when": 1788776048579,
       "tag": "0004_fix_guard_profile_privileges_trigger",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788776059568,
+      "tag": "0005_allow_service_role_in_guard_profile_privileges",
+      "breakpoints": true
     }
   ]
 }
