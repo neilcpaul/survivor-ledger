@@ -737,6 +737,44 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     [session?.user?.id, qc, entriesKey, entries, entryId, logActivity],
   );
 
+  /* ------- wizard hand-off: a finished plan becomes a new entry ------- */
+  // Only ever reached from the completion screen's explicit sign-up / log-in.
+  // An always-new entry, so an existing account's entries are never touched.
+  const wizardHandled = useRef(false);
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid || !entriesQ.isSuccess || wizardHandled.current) return;
+    const picks = takeWizardPlan();
+    if (!picks) return;
+    wizardHandled.current = true;
+    const name = `New entry — ${new Date().toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })}`;
+    void (async () => {
+      const { data } = await supabase
+        .from("entries")
+        .insert({ user_id: uid, name })
+        .select("id, name, created_at")
+        .single();
+      if (!data) return;
+      const rows = Object.entries(picks)
+        .filter(([, t]) => !!t)
+        .map(([w, t]) => ({ entry_id: data.id, week: Number(w), team_id: t as string }));
+      if (rows.length) await supabase.from("picks").upsert(rows, { onConflict: "entry_id,week" });
+      qc.setQueryData<Entry[]>(entriesKey, (prev) => [...(prev ?? []), data as Entry]);
+      setEntryId(data.id);
+      entryIdRef.current = data.id;
+      setPlan(picks);
+      qc.invalidateQueries({ queryKey: entriesKey });
+      logActivity("entry_create", { name, carried_weeks: rows.length });
+      // A brand new entry has no baseline yet: the usual 18/18 check locks it.
+      lockedRef.current = null;
+      lockIfComplete(picks);
+    })();
+  }, [session?.user?.id, entriesQ.isSuccess, qc, entriesKey, logActivity, lockIfComplete]);
+
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
