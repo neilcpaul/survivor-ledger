@@ -174,6 +174,35 @@ function isComplete(plan: Plan): boolean {
   return WEEKS.every((w) => !!plan[w]);
 }
 
+/** Wizard picks waiting to become an entry once the visitor finishes signing in. */
+export const WIZARD_PENDING_KEY = "survivor-ledger.wizard-pending";
+/** Session-scoped: the welcome modal was closed by any path in this session. */
+export const WELCOME_DISMISSED_KEY = "welcomeModalDismissed";
+
+export function stashWizardPlan(plan: Plan) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(WIZARD_PENDING_KEY, JSON.stringify(plan));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function takeWizardPlan(): Plan | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(WIZARD_PENDING_KEY);
+    if (!raw) return null;
+    window.sessionStorage.removeItem(WIZARD_PENDING_KEY);
+    const plan = planFromJson(JSON.parse(raw));
+    return Object.keys(plan).length ? plan : null;
+  } catch {
+    return null;
+  }
+}
+
+
+
 
 type Ctx = {
   teams: Team[];
