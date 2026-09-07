@@ -658,9 +658,23 @@ function Comparator() {
                     ? `Swap to ${teamsById.get(bestAlt.slot.teamId)?.abbr}`
                     : "No swap available",
                   color: "var(--scenario)",
-                  curve: previewCurve,
-                  dashed: true,
-                },
+                {...(originalLocked
+                  ? [
+                      {
+                        key: "orig",
+                        label: "Original plan",
+                        color: "var(--seq-high)",
+                        curve: curves.original,
+                        dashed: true,
+                      },
+                    ]
+                  : [])},
+                ...otherCurves.map((e, i) => ({
+                  key: `entry-${e.id}`,
+                  label: e.name,
+                  color: ENTRY_COLORS[i % ENTRY_COLORS.length]!,
+                  curve: e.curve,
+                })),
                 ...(hasProposal
                   ? [
                       {
@@ -672,6 +686,7 @@ function Comparator() {
                       },
                     ]
                   : []),
+
                 {
                   key: "opt",
                   label: "Optimal plan",
