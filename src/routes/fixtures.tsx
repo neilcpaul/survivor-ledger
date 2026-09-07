@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Empty, StatusPill, TeamChipLabel, WinPill } from "@/components/bits";
 import { useSurvivor } from "@/lib/survivor-store";
 import { pct, WEEKS, type Team } from "@/lib/survivor";
 import { supabase } from "@/integrations/supabase/client";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/fixtures")({
   head: () => ({
@@ -106,90 +106,71 @@ function TeamPanel({
     for (const list of map.values()) {
       list.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
     }
-    const primary = PRIMARY_POSITIONS.filter((p) => map.has(p)).map(
-      (p) => [p, map.get(p)!] as const,
-    );
+    const primary = PRIMARY_POSITIONS.flatMap((position) => {
+      const players = map.get(position);
+      return players ? ([[position, players]] as const) : [];
+    });
     const rest = [...map.entries()]
       .filter(([p]) => !PRIMARY_POSITIONS.includes(p))
       .sort((a, b) => a[0].localeCompare(b[0]));
-    return { primary, rest };
+    return [...primary, ...rest];
   }, [roster]);
 
   return (
-    <div>
-      <div className="flex items-center gap-2" style={{ marginBottom: 8 }}>
+    <section className="fixture-team-panel">
+      <header className="fixture-team-head">
         <TeamChipLabel abbr={team?.abbr} logo={team?.logo_url} name={team?.name} />
-      </div>
+        <span className="sub num">{roster.length} players</span>
+      </header>
 
-      <div className="label">Injury report · current status</div>
-      <p className="sub" style={{ marginTop: 2 }}>
-        Reflects each player's status right now, not their status as of this week's game.
-      </p>
-      <div className="detail-list">
-        {injuries.length === 0 ? (
-          <span className="sub">No reported injuries.</span>
-        ) : (
+      <div className="fixture-detail-section">
+        <div className="fixture-section-head">
+          <div className="label">Injuries · current status</div>
+          <span className="sub num">{injuries.length}</span>
+        </div>
+        <div className="injury-list">
+          {injuries.length === 0 ? (
+            <span className="sub">No reported injuries.</span>
+          ) : (
             injuries.map((i) => (
-              <div key={i.id} className="detail-row injury-row">
-                <span style={{ minWidth: 34 }} className="sub">
-                  {i.position ?? "—"}
-                </span>
-                <span
-                  className="player-name"
-                  style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                >
+              <div key={i.id} className="injury-item">
+                <span className="injury-position num">{i.position ?? "—"}</span>
+                <span className="player-name" title={i.player_name ?? "Unknown"}>
                   {i.player_name ?? "Unknown"}
                 </span>
-                <span className="status-wrap" style={{ flexShrink: 0, marginLeft: "auto" }}>
+                <span className="status-wrap">
                   <StatusPill status={i.status} />
                 </span>
               </div>
             ))
-        )}
+          )}
+        </div>
       </div>
 
-      <div className="label">Roster</div>
-      {groups.primary.map(([pos, players]) => (
-        <div key={pos}>
-          <div className="sub" style={{ marginTop: 8, fontWeight: 600 }}>
-            {pos}
-          </div>
-          <div className="detail-list">
-            {players.map((p) => (
-              <div key={p.id} className="detail-row">
-                <span className="num">{p.jersey_number ?? "—"}</span>
-                <span>{p.name}</span>
-              </div>
-            ))}
-          </div>
+      <div className="fixture-detail-section">
+        <div className="fixture-section-head">
+          <div className="label">Full roster</div>
+          <span className="sub">Position · No. · Player</span>
         </div>
-      ))}
-
-      {groups.rest.length ? (
-        <>
-          <button className="btn" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
-            {showAll ? "Hide full roster" : "Show full roster"}
-          </button>
-          {showAll
-            ? groups.rest.map(([pos, players]) => (
-                <div key={pos}>
-                  <div className="sub" style={{ marginTop: 8, fontWeight: 600 }}>
-                    {pos}
+        <div className="roster-groups">
+          {groups.map(([pos, players]) => (
+            <div className="roster-group" key={pos}>
+              <div className="roster-position num">{pos}</div>
+              <div className="roster-player-list">
+                {players.map((p) => (
+                  <div key={p.id} className="roster-player">
+                    <span className="num">{p.jersey_number ?? "—"}</span>
+                    <span className="player-name" title={p.name ?? "Unknown"}>
+                      {p.name ?? "Unknown"}
+                    </span>
                   </div>
-                  <div className="detail-list">
-                    {players.map((p) => (
-                      <div key={p.id} className="detail-row">
-                        <span className="num">{p.jersey_number ?? "—"}</span>
-                        <span>{p.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))
-            : null}
-        </>
-      ) : null}
-    </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -201,7 +182,7 @@ function DetailRowPanel({ homeId, awayId }: { homeId: string | null; awayId: str
   if (isLoading) return <Empty>Loading injuries and rosters…</Empty>;
 
   return (
-    <div className="detail-grid">
+    <div className="fixture-team-stack">
       {ids.map((id) => (
         <TeamPanel
           key={id}
@@ -216,10 +197,8 @@ function DetailRowPanel({ homeId, awayId }: { homeId: string | null; awayId: str
 
 function Fixtures() {
   const { games, teams, teamsById, plan, loading, currentWeek, setPick } = useSurvivor();
-  const isMobile = useIsMobile();
   const [week, setWeek] = useState<number | null>(null);
   const [teamFilter, setTeamFilter] = useState<string>("");
-  const [expanded, setExpanded] = useState<string | null>(null);
   const [drawerGameId, setDrawerGameId] = useState<string | null>(null);
   const activeWeek = week ?? currentWeek;
 
@@ -271,7 +250,6 @@ function Fixtures() {
                 value={teamFilter}
                 onChange={(e) => {
                   setTeamFilter(e.target.value);
-                  setExpanded(null);
                   setDrawerGameId(null);
                 }}
               >
@@ -292,7 +270,6 @@ function Fixtures() {
                   className={`btn${w === activeWeek ? " primary" : ""}`}
                   onClick={() => {
                     setWeek(w);
-                    setExpanded(null);
                     setDrawerGameId(null);
                   }}
                   aria-pressed={w === activeWeek}
@@ -337,18 +314,12 @@ function Fixtures() {
                       const away = g.away_team_id ? teamsById.get(g.away_team_id) : undefined;
                       const pickedHome = plan[g.week] === g.home_team_id;
                       const pickedAway = plan[g.week] === g.away_team_id;
-                      const open = expanded === g.id;
+                      const open = drawerGameId === g.id;
                       return (
                         <Fragment key={g.id}>
                           <tr
                             className="expandable"
-                            onClick={() => {
-                              if (isMobile) {
-                                setDrawerGameId(g.id);
-                              } else {
-                                setExpanded(open ? null : g.id);
-                              }
-                            }}
+                            onClick={() => setDrawerGameId(g.id)}
                             aria-expanded={open}
                           >
                             <td style={{ width: 24 }}>
@@ -414,16 +385,6 @@ function Fixtures() {
                               </div>
                             </td>
                           </tr>
-                          {!isMobile && open ? (
-                            <tr>
-                              <td colSpan={10} className="detail-panel">
-                                <DetailRowPanel
-                                  homeId={g.home_team_id}
-                                  awayId={g.away_team_id}
-                                />
-                              </td>
-                            </tr>
-                          ) : null}
                         </Fragment>
                       );
                     })
@@ -433,7 +394,7 @@ function Fixtures() {
             </div>
           </section>
 
-          {isMobile && drawerGame ? (
+          {drawerGame ? (
             <div
               className="drawer-backdrop"
               onClick={(e) => {
@@ -441,18 +402,21 @@ function Fixtures() {
               }}
               aria-hidden={!drawerGame}
             >
-              <div className="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+              <div className="fixture-dialog" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
                 <div className="drawer-head">
-                  <h3 id="drawer-title">
-                    {teamsById.get(drawerGame.away_team_id ?? "")?.abbr} @{" "}
-                    {teamsById.get(drawerGame.home_team_id ?? "")?.abbr}
-                  </h3>
+                  <div className="min-w-0">
+                    <h3 id="drawer-title">
+                      {teamsById.get(drawerGame.away_team_id ?? "")?.abbr} @{" "}
+                      {teamsById.get(drawerGame.home_team_id ?? "")?.abbr}
+                    </h3>
+                    <div className="sub">Current injuries and full rosters</div>
+                  </div>
                   <button
                     className="icon-btn"
                     onClick={() => setDrawerGameId(null)}
                     aria-label="Close details"
                   >
-                    ✕
+                    <X size={16} aria-hidden="true" />
                   </button>
                 </div>
                 <div className="drawer-body">
