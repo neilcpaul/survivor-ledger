@@ -299,6 +299,10 @@ a {
   margin-bottom: 12px;
 }
 
+.card-head > * {
+  min-width: 0;
+}
+
 @media (min-width: 640px) {
   .card-head {
     display: grid;
@@ -306,6 +310,7 @@ a {
     align-items: center;
   }
 }
+
 
 
 .label {
