@@ -206,6 +206,8 @@ type Ctx = {
   tier: "basic" | "analysis";
   isAnalysis: boolean;
   isAdmin: boolean;
+  /** False until the signed-in user's profile (tier/admin) has been fetched. */
+  profileLoaded: boolean;
   session: Session | null;
   displayName: string | null;
   entries: Entry[];
@@ -721,6 +723,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     tier,
     isAnalysis,
     isAdmin,
+    profileLoaded: !session?.user || !profileQ.isLoading,
     session,
     displayName,
     entries,

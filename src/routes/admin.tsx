@@ -67,7 +67,7 @@ function eventLabel(row: ActivityRow): string {
 }
 
 function AdminPage() {
-  const { isAdmin, session } = useSurvivor();
+  const { isAdmin, session, profileLoaded } = useSurvivor();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
@@ -76,8 +76,8 @@ function AdminPage() {
   const [limit, setLimit] = useState(200);
 
   useEffect(() => {
-    if (session !== null && !isAdmin) void navigate({ to: "/" });
-  }, [isAdmin, session, navigate]);
+    if (session !== null && profileLoaded && !isAdmin) void navigate({ to: "/" });
+  }, [isAdmin, session, profileLoaded, navigate]);
 
   const usersQ = useQuery({
     queryKey: ["admin-users"],
@@ -105,7 +105,7 @@ function AdminPage() {
   if (!isAdmin) {
     return (
       <AppShell title="Administration">
-        <Empty>Redirecting…</Empty>
+        <Empty>{profileLoaded ? "Redirecting…" : "Loading…"}</Empty>
       </AppShell>
     );
   }
