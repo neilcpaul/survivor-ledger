@@ -114,6 +114,17 @@ function TeamPanel({
     return [...primary, ...rest];
   }, [roster]);
 
+  const statusByPlayer = useMemo(
+    () =>
+      new Map(
+        injuries.map((injury) => [
+          (injury.player_name ?? "").trim().toLocaleLowerCase(),
+          injury.status,
+        ]),
+      ),
+    [injuries],
+  );
+
   return (
     <section className="fixture-team-panel">
       <header className="fixture-team-head">
@@ -148,7 +159,7 @@ function TeamPanel({
       <div className="fixture-detail-section">
         <div className="fixture-section-head">
           <div className="label">Full roster</div>
-          <span className="sub">Position · No. · Player</span>
+          <span className="sub">Position · No. · Player · Status</span>
         </div>
         <div className="roster-groups">
           {groups.map(([pos, players]) => (
@@ -160,6 +171,11 @@ function TeamPanel({
                     <span className="num">{p.jersey_number ?? "—"}</span>
                     <span className="player-name" title={p.name ?? "Unknown"}>
                       {p.name ?? "Unknown"}
+                    </span>
+                    <span className="status-wrap">
+                      <StatusPill
+                        status={statusByPlayer.get((p.name ?? "").trim().toLocaleLowerCase()) ?? "Active"}
+                      />
                     </span>
                   </div>
                 ))}
