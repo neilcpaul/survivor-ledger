@@ -22,7 +22,14 @@ import {
   type Team,
 } from "./survivor";
 
-type Entry = { id: string; name: string; created_at: string };
+type Entry = {
+  id: string;
+  name: string;
+  created_at: string;
+  original_picks?: unknown;
+  original_locked_at?: string | null;
+};
+
 
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
 
@@ -146,8 +153,15 @@ type Ctx = {
   canRefresh: boolean;
   plan: Plan;
   originalPlan: Plan;
+  /** True once a baseline has been locked for this entry / local plan. */
+  originalLocked: boolean;
+  /** Overwrite the baseline with the current picks (manual reset). */
+  resetOriginal: () => void;
+  /** Every other entry's current plan, for the multi-entry chart overlay. */
+  otherEntryPlans: { id: string; name: string; plan: Plan }[];
   setPick: (week: number, teamId: string | undefined) => void;
   resetPlan: () => void;
+
   editedWeeks: Set<number>;
   optimal: Plan;
   currentWeek: number;
