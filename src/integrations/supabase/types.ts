@@ -326,6 +326,24 @@ export type Database = {
           },
         ]
       }
+      site_settings: {
+        Row: {
+          id: string
+          updated_at: string
+          welcome_wizard_enabled: boolean
+        }
+        Insert: {
+          id?: string
+          updated_at?: string
+          welcome_wizard_enabled?: boolean
+        }
+        Update: {
+          id?: string
+          updated_at?: string
+          welcome_wizard_enabled?: boolean
+        }
+        Relationships: []
+      }
       sync_state: {
         Row: {
           id: string
