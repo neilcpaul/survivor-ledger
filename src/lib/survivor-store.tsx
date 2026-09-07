@@ -248,6 +248,9 @@ type Ctx = {
   signOut: () => Promise<void>;
   saveState: "guest" | "saving" | "synced" | "error" | "no-entry";
   entryName: string | null;
+  /** Admin kill switch for the first-visit welcome wizard. */
+  welcomeWizardEnabled: boolean;
+
 };
 
 // Cached on globalThis so a hot-module reload of this file reuses the same
