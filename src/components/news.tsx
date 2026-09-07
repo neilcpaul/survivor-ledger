@@ -171,6 +171,98 @@ export function NewsTicker({ articles }: { articles: Article[] }) {
   );
 }
 
+function TruncatedBadges({
+  teamIds,
+  publishedAt,
+}: {
+  teamIds: string[];
+  publishedAt: string;
+}) {
+  const visibleRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(teamIds.length);
+
+  useEffect(() => {
+    const calc = () => {
+      const visible = visibleRef.current;
+      const measure = measureRef.current;
+      if (!visible || !measure) return;
+      if (teamIds.length === 0) {
+        setVisibleCount(0);
+        return;
+      }
+      const available = visible.clientWidth;
+      const measureRect = measure.getBoundingClientRect();
+      const children = Array.from(measure.children) as HTMLElement[];
+      const timeWidth = children[0]?.getBoundingClientRect().width ?? 0;
+      const plusEl = children[children.length - 1];
+      const plusWidth = plusEl ? plusEl.getBoundingClientRect().width : 0;
+      const badgeChildren = children.slice(1, -1);
+
+      let count = 0;
+      for (let i = 0; i < badgeChildren.length; i++) {
+        const right =
+          badgeChildren[i]!.getBoundingClientRect().right - measureRect.left;
+        const needsPlus = i < badgeChildren.length - 1;
+        const required = right + (needsPlus ? plusWidth : 0);
+        if (required <= available) {
+          count = i + 1;
+        } else {
+          break;
+        }
+      }
+      setVisibleCount(count);
+    };
+
+    calc();
+    const ro = new ResizeObserver(calc);
+    if (visibleRef.current) ro.observe(visibleRef.current);
+    if (measureRef.current) ro.observe(measureRef.current);
+    return () => ro.disconnect();
+  }, [teamIds, publishedAt]);
+
+  const hidden = teamIds.slice(visibleCount);
+  const visible = teamIds.slice(0, visibleCount);
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <div className="news-badges news-badges-truncate" ref={visibleRef}>
+        <span className="sub num">{relativeTime(publishedAt)}</span>
+        {visible.map((id) => (
+          <TeamBadge key={id} teamId={id} />
+        ))}
+        {hidden.length > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="news-badge-overflow" tabIndex={0}>
+                +{hidden.length}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="news-badge-overflow-tooltip">
+              <div className="news-badges">
+                {hidden.map((id) => (
+                  <TeamBadge key={id} teamId={id} />
+                ))}
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
+      </div>
+      <div
+        className="news-badges news-badges-measure"
+        ref={measureRef}
+        aria-hidden="true"
+      >
+        <span className="sub num">{relativeTime(publishedAt)}</span>
+        {teamIds.map((id) => (
+          <TeamBadge key={id} teamId={id} />
+        ))}
+        <span className="news-badge-overflow">+{teamIds.length}</span>
+      </div>
+    </TooltipProvider>
+  );
+}
+
 export function NewsCard({ article, onOpen }: { article: Article; onOpen: () => void }) {
   const teamIds = articleTeamIds(article);
   return (
@@ -181,12 +273,7 @@ export function NewsCard({ article, onOpen }: { article: Article; onOpen: () => 
       <div className="news-card-body">
         <h3 className="news-headline">{article.headline ?? "Story"}</h3>
         {article.description ? <p className="sub truncate-3">{article.description}</p> : null}
-        <div className="news-badges">
-          <span className="sub num">{relativeTime(article.published_at)}</span>
-          {teamIds.map((id) => (
-            <TeamBadge key={id} teamId={id} />
-          ))}
-        </div>
+        <TruncatedBadges teamIds={teamIds} publishedAt={article.published_at} />
       </div>
     </article>
   );
