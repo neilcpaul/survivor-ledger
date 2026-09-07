@@ -7,11 +7,13 @@ export function StatCard({
   value,
   sub,
   tone,
+  onClick,
 }: {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
   tone?: "accent" | "optimal" | "scenario" | "ink";
+  onClick?: () => void;
 }) {
   const color =
     tone === "accent"
@@ -22,7 +24,13 @@ export function StatCard({
           ? "var(--scenario)"
           : "var(--ink)";
   return (
-    <div className="card">
+    <div
+      className={`card${onClick ? " interactive" : ""}`}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      style={onClick ? { cursor: "pointer" } : undefined}
+    >
       <div className="label">{label}</div>
       <div className="stat-value" style={{ color }}>
         {value}
