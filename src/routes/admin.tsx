@@ -279,6 +279,21 @@ function UserRows({
   onError: (v: string | null) => void;
 }) {
   const label = user.email ?? user.id;
+  const qc = useQueryClient();
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const removeUser = useMutation({
+    mutationFn: () => adminDeleteUser({ data: { userId: user.id } }),
+    onError: (e: Error) => {
+      setConfirmRemove(false);
+      onError(e.message);
+    },
+    onSuccess: () => {
+      onError(null);
+      setConfirmRemove(false);
+      void qc.invalidateQueries({ queryKey: ["admin-users"] });
+      void qc.invalidateQueries({ queryKey: ["admin-activity"] });
+    },
+  });
   return (
     <>
       <tr>
