@@ -193,6 +193,11 @@ function Comparator() {
     (w: number) => {
       const teamId = proposed[w] ?? undefined;
       // Committing releases the team from any other week of the working plan…
+      if (teamId) {
+        for (const other of WEEKS) {
+          if (other !== w && plan[other] === teamId) setPick(other, undefined);
+        }
+      }
       setPick(w, teamId);
       // …and from any other week still pending in this proposal.
       setOverrides((prev) => {
@@ -207,7 +212,7 @@ function Comparator() {
         return next;
       });
     },
-    [proposed, setPick, basePlan],
+    [proposed, setPick, basePlan, plan],
   );
 
   const rejectWeek = useCallback(
@@ -216,13 +221,22 @@ function Comparator() {
   );
 
   const acceptAll = useCallback(() => {
+    // Weeks whose current team is reused elsewhere in the proposal must be
+    // cleared, so a team never ends up double-booked in the saved plan.
+    const target = new Set(pendingWeeks.map((w) => proposed[w]).filter(Boolean) as string[]);
+    for (const w of WEEKS) {
+      if (pendingWeeks.includes(w)) continue;
+      const cur = plan[w];
+      if (cur && target.has(cur)) setPick(w, undefined);
+    }
     for (const w of pendingWeeks) setPick(w, proposed[w] ?? undefined);
     setOverrides(() => {
       const next: Record<number, string | null> = {};
       for (const w of WEEKS) next[w] = proposed[w] ?? null;
       return next;
     });
-  }, [pendingWeeks, proposed, setPick]);
+  }, [pendingWeeks, proposed, setPick, plan]);
+
 
   const rejectAll = useCallback(() => {
     setStrategy(null);
