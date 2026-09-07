@@ -53,7 +53,7 @@ function SeasonOverview() {
   } = useSurvivor();
   const curves = usePlanCurves();
   const openWizard = useCallback(
-    () => window.dispatchEvent(new CustomEvent(OPEN_WIZARD_EVENT)),
+    () => { window.dispatchEvent(new CustomEvent(OPEN_WIZARD_EVENT)); },
     [],
   );
   const [confirmReset, setConfirmReset] = useState(false);
