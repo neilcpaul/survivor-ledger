@@ -217,7 +217,7 @@ export function WelcomeWizard() {
           )}
 
           <div className="news-dots welcome-dots" aria-label="Progress">
-            {startWeeks.map((w, i) => (
+            {steps.map((w, i) => (
               <button
                 key={w}
                 type="button"
