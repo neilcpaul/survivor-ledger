@@ -212,7 +212,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     queryKey: ["optimal-plan", session?.user?.id ?? "anon"],
     enabled: isAnalysis,
     staleTime: 5 * 60_000,
-    queryFn: async () => (await getOptimalPlan()).plan ?? {},
+    queryFn: async () => (await getOptimalPlan({ data: {} })).plan ?? {},
   });
   const optimal = useMemo<Plan>(
     () => (isAnalysis ? (optimalQ.data ?? {}) : {}),

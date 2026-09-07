@@ -197,19 +197,30 @@ function hungarian(cost: number[][]): number[] {
 
 const BIG = 1000; // effective cost of "no game / unusable" cells
 
-/** Optimal one-team-per-season plan maximising the season-long product. */
+/**
+ * Optimal one-team-per-season plan maximising the season-long product.
+ *
+ * `weights` optionally scales each week's -log(p) cost (index 0 = week 1).
+ * A weight above 1 makes that week's risk count for more (conservative), below
+ * 1 makes it count for less (aggressive). Default 1.0 everywhere reproduces the
+ * plain maximum-survival solution — the algorithm itself is unchanged, only the
+ * cost matrix is transformed before solving.
+ */
 export function optimalPlan(
   slots: Map<number, Map<string, Slot>>,
   teamIds: string[],
+  weights?: number[],
 ): Plan {
   if (!teamIds.length) return {};
-  const cost = WEEKS.map((week) =>
-    teamIds.map((teamId) => {
+  const cost = WEEKS.map((week, wi) => {
+    const w = weights?.[wi];
+    const weight = typeof w === "number" && w > 0 ? w : 1;
+    return teamIds.map((teamId) => {
       const s = slots.get(week)?.get(teamId);
       if (!s || s.winProb <= 0) return BIG;
-      return -Math.log(s.winProb);
-    }),
-  );
+      return -Math.log(s.winProb) * weight;
+    });
+  });
   const assignment = hungarian(cost);
   const plan: Plan = {};
   assignment.forEach((col, row) => {
@@ -220,6 +231,7 @@ export function optimalPlan(
   });
   return plan;
 }
+
 
 /** A reasonable default "original plan": greedy highest win probability. */
 export function greedyPlan(slots: Map<number, Map<string, Slot>>): Plan {
@@ -268,4 +280,47 @@ export function seqColor(p: number | null | undefined): string {
 
 export function ppDelta(a: number, b: number): number {
   return (a - b) * 100;
+}
+
+/* --------------------- exact elimination-week maths -------------------- */
+
+/**
+ * Exact probability of being eliminated in exactly week N:
+ *   (product of weeks 1..N-1 win probs) x (1 - week N win prob).
+ * Weeks with no pick contribute no elimination mass.
+ */
+export function eliminationDistribution(
+  curve: CurvePoint[],
+): { week: number; p: number }[] {
+  let alive = 1;
+  return curve.map((point) => {
+    const p = point.winProb;
+    if (p == null) return { week: point.week, p: 0 };
+    const eliminated = alive * (1 - p);
+    alive *= p;
+    return { week: point.week, p: eliminated };
+  });
+}
+
+/**
+ * Replaces the simulation-flavoured band with the exact one: at each week the
+ * "still alive" outcome is Bernoulli with success probability S(N), whose exact
+ * standard deviation is sqrt(S(1-S)). Derived from the elimination-week
+ * distribution above, no sampling involved.
+ */
+export function exactBand(curve: CurvePoint[]): CurvePoint[] {
+  return curve.map((point) => ({
+    ...point,
+    sd: Math.sqrt(Math.max(0, point.cumulative * (1 - point.cumulative))),
+  }));
+}
+
+/** Mean and standard deviation (in weeks) of the elimination-week distribution. */
+export function eliminationWeekStats(curve: CurvePoint[]): { mean: number; sd: number } {
+  const dist = eliminationDistribution(curve);
+  const mass = dist.reduce((a, d) => a + d.p, 0);
+  if (mass <= 0) return { mean: 0, sd: 0 };
+  const mean = dist.reduce((a, d) => a + d.week * d.p, 0) / mass;
+  const varc = dist.reduce((a, d) => a + d.p * (d.week - mean) ** 2, 0) / mass;
+  return { mean, sd: Math.sqrt(Math.max(0, varc)) };
 }

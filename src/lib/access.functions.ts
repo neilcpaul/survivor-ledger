@@ -34,10 +34,28 @@ function publicClient() {
  * The Kuhn–Munkres optimal plan is analysis-tier only. A basic-tier session
  * never receives the solver's output — the check happens here, server side,
  * not just in the UI.
+ *
+ * An optional per-week `weights` array (18 entries, index 0 = week 1) scales
+ * each week's -log(p) cost before the same solver runs. Omitted or all-1.0
+ * reproduces today's maximum-survival behaviour exactly.
  */
 export const getOptimalPlan = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ tier: string; plan: Plan | null }> => {
+  .inputValidator((input: { weights?: number[] } | undefined) => {
+    const weights = input?.weights;
+    if (weights === undefined) return { weights: undefined };
+    if (!Array.isArray(weights) || weights.length !== 18) {
+      throw new Error("weights must be an array of 18 numbers");
+    }
+    return {
+      weights: weights.map((w) => {
+        const n = Number(w);
+        if (!Number.isFinite(n) || n <= 0 || n > 10) throw new Error("Invalid weight");
+        return n;
+      }),
+    };
+  })
+  .handler(async ({ context, data }): Promise<{ tier: string; plan: Plan | null }> => {
     const { data: profile } = await context.supabase
       .from("profiles")
       .select("tier")
@@ -57,9 +75,14 @@ export const getOptimalPlan = createServerFn({ method: "GET" })
       db.from("teams").select("id"),
     ]);
     const slots = buildSlots((games ?? []) as Game[]);
-    const plan = optimalPlan(slots, (teams ?? []).map((t) => t.id));
+    const plan = optimalPlan(
+      slots,
+      (teams ?? []).map((t) => t.id),
+      data?.weights,
+    );
     return { tier, plan };
   });
+
 
 /**
  * Verified server-side with the service role: the caller's identity comes from
