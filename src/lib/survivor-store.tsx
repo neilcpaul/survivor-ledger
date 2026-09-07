@@ -438,6 +438,29 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     writeGuestPlan(plan);
   }, [plan, session?.user?.id]);
 
+  // Signed in with no entry container yet: picks live in this browser under the
+  // user's own id, so a reload keeps them until their first entry exists.
+  const preEntryLoaded = useRef<string | null>(null);
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid || !entriesQ.isSuccess || !seeded.current) return;
+    if (entries.length) {
+      // The first entry already exists (perhaps created on another device), so
+      // any leftover local pre-entry picks are stale — drop them, don't merge.
+      clearPreEntryPlan(uid);
+      preEntryLoaded.current = null;
+      return;
+    }
+    if (preEntryLoaded.current !== uid) {
+      preEntryLoaded.current = uid;
+      const stored = readPreEntryPlan(uid);
+      if (Object.keys(stored).length) setPlan((prev) => ({ ...prev, ...stored }));
+      return;
+    }
+    writePreEntryPlan(uid, plan);
+  }, [session?.user?.id, entriesQ.isSuccess, entries.length, plan, slots.size, profileQ.isLoading]);
+
+
   /* ------------- load a signed-in entry's saved picks ------------- */
   useEffect(() => {
     if (!entryId || slots.size === 0) return;
