@@ -11,6 +11,7 @@ import {
   adminListUsers,
   adminRenameEntry,
   adminSetAccess,
+  adminSetWelcomeWizard,
   type ActivityRow,
   type AdminEntryRow,
   type AdminUserRow,
@@ -61,13 +62,15 @@ function eventLabel(row: ActivityRow): string {
       return "Original plan reset";
     case "strategy_applied":
       return `Applied strategy to ${d["count"] ?? "several"} week(s)`;
+    case "setting_change":
+      return `Changed setting '${d["setting"] ?? "—"}' to ${d["to"] === true ? "on" : d["to"] === false ? "off" : String(d["to"] ?? "—")}`;
     default:
       return row.event_type;
   }
 }
 
 function AdminPage() {
-  const { isAdmin, session, profileLoaded } = useSurvivor();
+  const { isAdmin, session, profileLoaded, welcomeWizardEnabled } = useSurvivor();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
@@ -101,6 +104,16 @@ function AdminPage() {
       void qc.invalidateQueries({ queryKey: ["admin-activity"] });
     },
   });
+  const wizardToggle = useMutation({
+    mutationFn: (enabled: boolean) => adminSetWelcomeWizard({ data: { enabled } }),
+    onError: (e: Error) => setError(e.message),
+    onSuccess: () => {
+      setError(null);
+      void qc.invalidateQueries({ queryKey: ["site-settings"] });
+      void qc.invalidateQueries({ queryKey: ["admin-activity"] });
+    },
+  });
+
 
   if (!isAdmin) {
     return (
@@ -123,6 +136,26 @@ function AdminPage() {
 
   return (
     <AppShell title="Administration">
+      <section className="card" style={{ marginBottom: 16 }}>
+        <div className="card-head">
+          <div>
+            <h2>Site settings</h2>
+            <p className="sub">Options that affect every visitor.</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span>Show welcome wizard to new visitors</span>
+          <button
+            className={`btn${welcomeWizardEnabled ? " primary" : ""}`}
+            aria-pressed={welcomeWizardEnabled}
+            disabled={wizardToggle.isPending}
+            onClick={() => wizardToggle.mutate(!welcomeWizardEnabled)}
+          >
+            {welcomeWizardEnabled ? "On" : "Off"}
+          </button>
+        </div>
+      </section>
+
       <section className="card">
         <div className="card-head">
           <div>

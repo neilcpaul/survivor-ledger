@@ -85,6 +85,13 @@
       "when": 1788784221797,
       "tag": "0011_activity_log_admin_select_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788796578503,
+      "tag": "0012_create_site_settings",
+      "breakpoints": true
     }
   ]
 }

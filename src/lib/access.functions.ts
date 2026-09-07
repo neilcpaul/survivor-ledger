@@ -442,3 +442,33 @@ export const adminActivityFeed = createServerFn({ method: "POST" })
       .slice(0, data.limit);
   });
 
+
+/**
+ * The welcome-wizard kill switch. Reading is public (the flag is a plain
+ * boolean the anonymous landing page needs); writing is admin-only through the
+ * service role, and is recorded in the activity log like every other admin act.
+ */
+export const adminSetWelcomeWizard = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { enabled: boolean }) => {
+    if (typeof input?.enabled !== "boolean") throw new Error("enabled is required");
+    return { enabled: input.enabled };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("site_settings")
+      .upsert(
+        { id: "global", welcome_wizard_enabled: data.enabled, updated_at: new Date().toISOString() },
+        { onConflict: "id" },
+      );
+    if (error) throw error;
+    await writeActivity({
+      actor_type: "admin",
+      actor_id: context.userId,
+      event_type: "setting_change",
+      detail: { setting: "welcome_wizard_enabled", to: data.enabled },
+    });
+    return { ok: true };
+  });

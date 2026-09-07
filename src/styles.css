@@ -1198,3 +1198,118 @@ table.grid tr.expandable:hover th {
 button.badge.legend-toggle {
   cursor: pointer;
 }
+
+/* ---------------- first-visit welcome wizard ---------------- */
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 18px;
+  overflow-y: auto;
+}
+.welcome-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+.welcome-panel {
+  width: 100%;
+  max-width: 620px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow, 0 10px 30px rgb(0 0 0 / 0.08));
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.welcome-title {
+  font-family: "Big Shoulders Display", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: clamp(30px, 6vw, 46px);
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+.welcome-lede {
+  color: var(--ink-muted);
+  margin: 0;
+}
+.welcome-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.welcome-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.welcome-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.welcome-picks {
+  display: grid;
+  gap: 8px;
+}
+.welcome-pick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.welcome-pick:hover,
+.welcome-pick:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.welcome-pick-name {
+  font-weight: 600;
+  min-width: 0;
+  flex: 1;
+}
+.welcome-pick-prob {
+  font-weight: 600;
+  color: var(--accent);
+}
+.welcome-dots {
+  justify-content: center;
+}
+.welcome-fade {
+  animation: welcome-in 220ms ease-out;
+}
+@keyframes welcome-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-fade {
+    animation: none;
+  }
+}

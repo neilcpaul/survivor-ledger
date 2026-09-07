@@ -71,6 +71,11 @@ async function fetchSyncState() {
 
 const GUEST_PLAN_KEY = "survivor-ledger.guest-plan";
 
+/** True when this browser already holds anonymous guest picks. */
+export function hasLocalGuestPicks(): boolean {
+  return Object.keys(readGuestPlan()).length > 0;
+}
+
 function readGuestPlan(): Plan {
   if (typeof window === "undefined") return {};
   try {
@@ -174,6 +179,35 @@ function isComplete(plan: Plan): boolean {
   return WEEKS.every((w) => !!plan[w]);
 }
 
+/** Wizard picks waiting to become an entry once the visitor finishes signing in. */
+export const WIZARD_PENDING_KEY = "survivor-ledger.wizard-pending";
+/** Session-scoped: the welcome modal was closed by any path in this session. */
+export const WELCOME_DISMISSED_KEY = "welcomeModalDismissed";
+
+export function stashWizardPlan(plan: Plan) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(WIZARD_PENDING_KEY, JSON.stringify(plan));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function takeWizardPlan(): Plan | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(WIZARD_PENDING_KEY);
+    if (!raw) return null;
+    window.sessionStorage.removeItem(WIZARD_PENDING_KEY);
+    const plan = planFromJson(JSON.parse(raw));
+    return Object.keys(plan).length ? plan : null;
+  } catch {
+    return null;
+  }
+}
+
+
+
 
 type Ctx = {
   teams: Team[];
@@ -219,6 +253,9 @@ type Ctx = {
   signOut: () => Promise<void>;
   saveState: "guest" | "saving" | "synced" | "error" | "no-entry";
   entryName: string | null;
+  /** Admin kill switch for the first-visit welcome wizard. */
+  welcomeWizardEnabled: boolean;
+
 };
 
 // Cached on globalThis so a hot-module reload of this file reuses the same
@@ -305,6 +342,23 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     enabled: !!session?.user,
     refetchInterval: 60_000,
   });
+
+  // Public flag: whether first-time visitors are offered the welcome wizard.
+  const settingsQ = useQuery({
+    queryKey: ["site-settings"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("welcome_wizard_enabled")
+        .eq("id", "global")
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+  const welcomeWizardEnabled = settingsQ.data?.welcome_wizard_enabled !== false;
+
+
 
 
   const teams = useMemo(() => teamsQ.data ?? [], [teamsQ.data]);
@@ -688,6 +742,44 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     [session?.user?.id, qc, entriesKey, entries, entryId, logActivity],
   );
 
+  /* ------- wizard hand-off: a finished plan becomes a new entry ------- */
+  // Only ever reached from the completion screen's explicit sign-up / log-in.
+  // An always-new entry, so an existing account's entries are never touched.
+  const wizardHandled = useRef(false);
+  useEffect(() => {
+    const uid = session?.user?.id;
+    if (!uid || !entriesQ.isSuccess || wizardHandled.current) return;
+    const picks = takeWizardPlan();
+    if (!picks) return;
+    wizardHandled.current = true;
+    const name = `New entry — ${new Date().toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    })}`;
+    void (async () => {
+      const { data } = await supabase
+        .from("entries")
+        .insert({ user_id: uid, name })
+        .select("id, name, created_at")
+        .single();
+      if (!data) return;
+      const rows = Object.entries(picks)
+        .filter(([, t]) => !!t)
+        .map(([w, t]) => ({ entry_id: data.id, week: Number(w), team_id: t as string }));
+      if (rows.length) await supabase.from("picks").upsert(rows, { onConflict: "entry_id,week" });
+      qc.setQueryData<Entry[]>(entriesKey, (prev) => [...(prev ?? []), data as Entry]);
+      setEntryId(data.id);
+      entryIdRef.current = data.id;
+      setPlan(picks);
+      qc.invalidateQueries({ queryKey: entriesKey });
+      logActivity("entry_create", { name, carried_weeks: rows.length });
+      // A brand new entry has no baseline yet: the usual 18/18 check locks it.
+      lockedRef.current = null;
+      lockIfComplete(picks);
+    })();
+  }, [session?.user?.id, entriesQ.isSuccess, qc, entriesKey, logActivity, lockIfComplete]);
+
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
@@ -735,6 +827,8 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     signOut,
     saveState: !session?.user ? "guest" : entryId ? saveState : "no-entry",
     entryName: entries.find((e) => e.id === entryId)?.name ?? null,
+    welcomeWizardEnabled,
+
   };
 
   return <SurvivorContext.Provider value={value}>{children}</SurvivorContext.Provider>;
