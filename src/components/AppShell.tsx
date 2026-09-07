@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { useSurvivor } from "@/lib/survivor-store";
+import { OPEN_WIZARD_EVENT } from "@/components/WelcomeWizard";
 
 const ALL_NAV = [
   { to: "/", label: "Season Overview" },
