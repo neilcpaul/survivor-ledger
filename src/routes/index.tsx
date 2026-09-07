@@ -57,8 +57,8 @@ function SeasonOverview() {
           <section className="stat-grid" style={{ marginBottom: 16 }}>
             <StatCard
               label="Season survival odds"
-              value={pct(mine, 2)}
-              sub={oddsAsOneInN(mine)}
+              value={hasPicks ? pct(mine, 2) : "—"}
+              sub={hasPicks ? oddsAsOneInN(mine) : "Make your first pick"}
               tone="accent"
             />
             <StatCard
