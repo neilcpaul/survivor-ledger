@@ -62,6 +62,8 @@ function eventLabel(row: ActivityRow): string {
       return "Original plan reset";
     case "strategy_applied":
       return `Applied strategy to ${d["count"] ?? "several"} week(s)`;
+    case "setting_change":
+      return `Changed setting '${d["setting"] ?? "—"}' to ${d["to"] === true ? "on" : d["to"] === false ? "off" : String(d["to"] ?? "—")}`;
     default:
       return row.event_type;
   }
