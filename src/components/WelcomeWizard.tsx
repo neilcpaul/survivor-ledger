@@ -153,7 +153,14 @@ export function WelcomeWizard() {
             We can walk you through your first plan in a couple of minutes.
           </p>
           <div className="welcome-actions">
-            <button className="btn primary" onClick={() => setPhase("wizard")}>
+            <button
+              className="btn primary"
+              onClick={() => {
+                setSteps(WEEKS.filter((w) => !plan[w]));
+                setStepIndex(0);
+                setPhase("wizard");
+              }}
+            >
               Get started
             </button>
             <Link to="/auth" className="welcome-link" onClick={markDismissed}>
