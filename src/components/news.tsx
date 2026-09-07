@@ -3,6 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useSurvivor } from "@/lib/survivor-store";
 import { articleTeamIds, relativeTime, type Article } from "@/lib/news";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function TeamBadge({ teamId }: { teamId: string }) {
   const { teamsById } = useSurvivor();
