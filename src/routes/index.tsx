@@ -46,6 +46,7 @@ function SeasonOverview() {
   const weakest = [...curves.mine]
     .filter((p) => p.winProb != null)
     .sort((a, b) => (a.winProb ?? 1) - (b.winProb ?? 1))[0];
+  const hasPicks = curves.mine.some((p) => p.winProb != null);
 
   return (
     <AppShell title="Season Overview">
