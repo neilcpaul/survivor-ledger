@@ -86,6 +86,52 @@ function writeGuestPlan(plan: Plan) {
   }
 }
 
+const GUEST_ORIGINAL_KEY = "survivor-ledger.guest-original";
+
+type OriginalBaseline = { picks: Plan; lockedAt: string | null };
+
+function planFromJson(raw: unknown): Plan {
+  const plan: Plan = {};
+  if (raw && typeof raw === "object") {
+    for (const [week, teamId] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof teamId === "string") plan[Number(week)] = teamId;
+    }
+  }
+  return plan;
+}
+
+function readGuestOriginal(): OriginalBaseline {
+  if (typeof window === "undefined") return { picks: {}, lockedAt: null };
+  try {
+    const raw = window.localStorage.getItem(GUEST_ORIGINAL_KEY);
+    if (!raw) return { picks: {}, lockedAt: null };
+    const parsed = JSON.parse(raw) as { originalPicks?: unknown; originalLockedAt?: unknown };
+    return {
+      picks: planFromJson(parsed.originalPicks),
+      lockedAt: typeof parsed.originalLockedAt === "string" ? parsed.originalLockedAt : null,
+    };
+  } catch {
+    return { picks: {}, lockedAt: null };
+  }
+}
+
+function writeGuestOriginal(picks: Plan, lockedAt: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      GUEST_ORIGINAL_KEY,
+      JSON.stringify({ originalPicks: picks, originalLockedAt: lockedAt }),
+    );
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function isComplete(plan: Plan): boolean {
+  return WEEKS.every((w) => !!plan[w]);
+}
+
+
 type Ctx = {
   teams: Team[];
   teamsById: Map<string, Team>;
