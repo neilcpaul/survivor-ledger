@@ -299,7 +299,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("entries")
-        .select("id, name, created_at")
+        .select("id, name, created_at, original_picks, original_locked_at")
         .order("created_at");
       if (error) throw error;
       return (data ?? []) as Entry[];
