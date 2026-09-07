@@ -86,9 +86,39 @@ function SeasonOverview() {
             />
             <StatCard
               label="vs. original plan"
-              value={<Delta pp={ppDelta(mine, original)} />}
-              sub={`Original ${pct(original, 2)}`}
+              value={originalLocked ? <Delta pp={ppDelta(mine, original)} /> : "—"}
+              sub={
+                <>
+                  {originalLocked
+                    ? `Original ${pct(original, 2)}`
+                    : "Set once all 18 weeks are picked"}
+                  <div style={{ marginTop: 6 }}>
+                    {confirmReset ? (
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span>Reset original plan to today's picks? This replaces your current comparison baseline.</span>
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            resetOriginal();
+                            setConfirmReset(false);
+                          }}
+                        >
+                          Confirm
+                        </button>
+                        <button className="btn" onClick={() => setConfirmReset(false)}>
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button className="btn" onClick={() => setConfirmReset(true)}>
+                        Reset original plan to current
+                      </button>
+                    )}
+                  </div>
+                </>
+              }
             />
+
             {isAnalysis ? (
               <StatCard
                 label="Optimal ceiling"
