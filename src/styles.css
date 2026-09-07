@@ -311,6 +311,59 @@ a {
   }
 }
 
+.card.interactive {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card.interactive:hover,
+.card.interactive:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
+}
+
+.select-picks-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.select-picks-card:hover,
+.select-picks-card:focus-visible {
+  background: color-mix(in srgb, var(--accent-soft) 85%, var(--accent));
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
+}
+
+.select-picks-card:active {
+  transform: translateY(1px);
+}
+
+.select-picks-card h2 {
+  font-size: 24px;
+  color: var(--accent-ink);
+}
+
+.select-picks-card .sub {
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+
+.select-picks-arrow {
+  font-family: "Big Shoulders Display", sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 
 
 .label {
