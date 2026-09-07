@@ -606,6 +606,10 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     canRefresh,
     plan,
     originalPlan,
+    originalLocked: !!originalLockedAt,
+    resetOriginal,
+    otherEntryPlans,
+
     setPick,
     resetPlan,
     editedWeeks,
