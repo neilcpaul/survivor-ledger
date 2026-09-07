@@ -661,62 +661,120 @@ table.grid tr.expandable:hover th {
   transform: rotate(90deg);
 }
 
-.detail-panel {
-  background: var(--surface-2);
-  padding: 14px 12px;
-}
-
-.detail-grid {
+.fixture-team-stack {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 
-@media (max-width: 920px) {
-  .detail-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.detail-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 6px 0 12px;
+.fixture-team-panel {
   min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
 }
 
-.detail-row {
-  display: flex;
+.fixture-team-head,
+.fixture-section-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.fixture-team-head {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--accent-soft);
+}
+
+.fixture-detail-section {
+  padding: 12px;
+}
+
+.fixture-detail-section + .fixture-detail-section {
+  border-top: 1px solid var(--border);
+}
+
+.injury-list {
+  display: grid;
+  gap: 3px;
+  margin-top: 7px;
+}
+
+.injury-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  min-height: 26px;
+  padding: 2px 0;
   font-size: 12px;
-  min-width: 0;
 }
 
-.detail-row > * {
-  min-width: 0;
+.injury-item + .injury-item {
+  border-top: 1px solid color-mix(in srgb, var(--border) 62%, transparent);
 }
 
-.detail-row .num {
+.injury-position {
   color: var(--ink-faint);
-  min-width: 26px;
+  font-size: 11px;
 }
 
-@media (max-width: 640px) {
-  .detail-row.injury-row {
-    flex-wrap: wrap;
-    row-gap: 4px;
-  }
+.player-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-  .detail-row.injury-row .player-name {
-    flex: 1 1 auto;
-  }
+.status-wrap {
+  min-width: 0;
+  justify-self: end;
+}
 
-  .detail-row.injury-row .status-wrap {
-    margin-left: auto;
-    flex: 0 0 auto;
-  }
+.roster-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  margin-top: 8px;
+}
+
+.roster-group {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+  gap: 7px;
+  min-width: 0;
+  padding-top: 5px;
+  border-top: 1px solid var(--border);
+}
+
+.roster-position {
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.roster-player-list {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.roster-player {
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.roster-player .num {
+  color: var(--ink-faint);
 }
 
 /* ---------- mobile fixture drawer ---------- */
@@ -727,17 +785,21 @@ table.grid tr.expandable:hover th {
   z-index: 50;
   background: rgba(24, 35, 25, 0.45);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
 }
 
-.drawer {
-  width: min(420px, 88vw);
-  height: 100%;
+.fixture-dialog {
+  width: min(880px, calc(100vw - 40px));
+  max-height: calc(100vh - 40px);
+  margin: auto;
   background: var(--surface);
-  border-left: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .drawer-head {
@@ -752,8 +814,55 @@ table.grid tr.expandable:hover th {
 .drawer-body {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 14px;
   min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .drawer-backdrop {
+    align-items: flex-end;
+  }
+
+  .fixture-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    margin: 16px 0 0;
+    border-width: 1px 0 0;
+    border-radius: 10px 10px 0 0;
+  }
+
+  .drawer-head,
+  .drawer-body {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .fixture-detail-section {
+    padding: 10px;
+  }
+
+  .injury-item {
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    gap: 6px;
+    font-size: 11.5px;
+  }
+
+  .injury-item .pill {
+    max-width: 126px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .roster-player .pill {
+    max-width: 114px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .roster-groups {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
 }
 
 /* ---------- rail burger menu ---------- */
