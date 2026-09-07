@@ -104,6 +104,7 @@ export function WelcomeWizard() {
     const onStart = (e: TouchEvent) => {
       if (isInteractiveTarget(e.target)) return;
       const t = e.touches[0];
+      if (!t) return;
       state.startX = t.clientX;
       state.startY = t.clientY;
       state.active = true;
@@ -112,6 +113,7 @@ export function WelcomeWizard() {
     const onMove = (e: TouchEvent) => {
       if (!state.active) return;
       const t = e.touches[0];
+      if (!t) return;
       const dx = t.clientX - state.startX;
       const dy = t.clientY - state.startY;
       if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20) {
@@ -123,12 +125,14 @@ export function WelcomeWizard() {
       if (!state.active) return;
       state.active = false;
       const t = e.changedTouches[0];
+      if (!t) return;
       const dx = t.clientX - state.startX;
       const dy = t.clientY - state.startY;
       if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.2) {
         goStep(dx < 0 ? 1 : -1);
       }
     };
+
 
     const onCancel = () => {
       state.active = false;
