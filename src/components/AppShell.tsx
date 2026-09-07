@@ -259,6 +259,13 @@ function AuthWidget() {
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
+      {saveState === "no-entry" ? (
+        <span className="badge" title="Create an entry to save these picks">
+          <span className="dot" style={{ background: "var(--caution)" }} aria-hidden="true" />
+          Not saved yet — create an entry to keep these picks
+        </span>
+      ) : null}
+
       {saveState === "synced" || saveState === "error" ? (
         <span className="badge" title={`Plan storage status: ${saveState}`}>
           <span
