@@ -140,15 +140,11 @@ function SeasonOverview() {
                 <p className="sub">
                   Every week's pick, its win probability, and the running season odds.
                 </p>
-                <p className="sub">
-                  {saveState === "guest" ? (
-                    "Not saved · local to this device"
-                  ) : (
-                    <>● Synced to {entryName ?? "your entry"}</>
-                  )}
-                </p>
+                {saveState === "synced" ? (
+                  <p className="sub">● Synced to {entryName ?? "your entry"}</p>
+                ) : null}
               </div>
-              <Link to="/comparator" className="btn primary">
+              <Link to={isAnalysis ? "/comparator" : "/heatmap"} className="btn primary">
                 Change a pick
               </Link>
             </div>
@@ -195,7 +191,11 @@ function SeasonOverview() {
                         <td>
                           <WinPill p={point.winProb} />
                         </td>
-                        <td className="num">{pct(point.cumulative, 2)}</td>
+                        <td className="num">
+                          {curves.mine.slice(0, i + 1).some((p) => p.winProb != null)
+                            ? pct(point.cumulative, 2)
+                            : "—"}
+                        </td>
                         <td>
                           <Delta pp={ppDelta(point.cumulative, orig.cumulative)} />
                         </td>
