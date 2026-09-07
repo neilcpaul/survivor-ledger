@@ -200,7 +200,6 @@ function TruncatedBadges({
       const available = visible.clientWidth;
       const measureRect = measure.getBoundingClientRect();
       const children = Array.from(measure.children) as HTMLElement[];
-      const timeWidth = showTime ? (children[0]?.getBoundingClientRect().width ?? 0) : 0;
       const plusEl = children[children.length - 1];
       const plusWidth = plusEl ? plusEl.getBoundingClientRect().width : 0;
       const badgeChildren = showTime ? children.slice(1, -1) : children.slice(0, -1);
@@ -210,7 +209,7 @@ function TruncatedBadges({
         const right =
           badgeChildren[i]!.getBoundingClientRect().right - measureRect.left;
         const needsPlus = i < badgeChildren.length - 1;
-        const required = right + (needsPlus ? plusWidth : 0) + (showTime ? timeWidth : 0);
+        const required = right + (needsPlus ? plusWidth : 0);
         if (required <= available) {
           count = i + 1;
         } else {
