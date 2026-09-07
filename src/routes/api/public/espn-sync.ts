@@ -283,7 +283,11 @@ async function runSync(scope: string) {
 
     const weeks = Array.from({ length: 18 }, (_, i) => i + 1);
     const games = await syncSchedule(db, year, weeks);
-    if (scope !== "schedule-only") await syncPredictor(games);
+    if (scope !== "schedule-only") {
+      await syncPredictor(games);
+      await syncOddsFallback(games);
+      summary.games_with_prob = games.filter((g) => g.home_win_prob != null).length;
+    }
     for (let i = 0; i < games.length; i += 200) {
       await db.from("games").upsert(games.slice(i, i + 200), { onConflict: "id" });
     }
