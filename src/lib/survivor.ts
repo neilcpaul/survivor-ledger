@@ -281,3 +281,46 @@ export function seqColor(p: number | null | undefined): string {
 export function ppDelta(a: number, b: number): number {
   return (a - b) * 100;
 }
+
+/* --------------------- exact elimination-week maths -------------------- */
+
+/**
+ * Exact probability of being eliminated in exactly week N:
+ *   (product of weeks 1..N-1 win probs) x (1 - week N win prob).
+ * Weeks with no pick contribute no elimination mass.
+ */
+export function eliminationDistribution(
+  curve: CurvePoint[],
+): { week: number; p: number }[] {
+  let alive = 1;
+  return curve.map((point) => {
+    const p = point.winProb;
+    if (p == null) return { week: point.week, p: 0 };
+    const eliminated = alive * (1 - p);
+    alive *= p;
+    return { week: point.week, p: eliminated };
+  });
+}
+
+/**
+ * Replaces the simulation-flavoured band with the exact one: at each week the
+ * "still alive" outcome is Bernoulli with success probability S(N), whose exact
+ * standard deviation is sqrt(S(1-S)). Derived from the elimination-week
+ * distribution above, no sampling involved.
+ */
+export function exactBand(curve: CurvePoint[]): CurvePoint[] {
+  return curve.map((point) => ({
+    ...point,
+    sd: Math.sqrt(Math.max(0, point.cumulative * (1 - point.cumulative))),
+  }));
+}
+
+/** Mean and standard deviation (in weeks) of the elimination-week distribution. */
+export function eliminationWeekStats(curve: CurvePoint[]): { mean: number; sd: number } {
+  const dist = eliminationDistribution(curve);
+  const mass = dist.reduce((a, d) => a + d.p, 0);
+  if (mass <= 0) return { mean: 0, sd: 0 };
+  const mean = dist.reduce((a, d) => a + d.week * d.p, 0) / mass;
+  const varc = dist.reduce((a, d) => a + d.p * (d.week - mean) ** 2, 0) / mass;
+  return { mean, sd: Math.sqrt(Math.max(0, varc)) };
+}
