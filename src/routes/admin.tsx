@@ -70,7 +70,7 @@ function eventLabel(row: ActivityRow): string {
 }
 
 function AdminPage() {
-  const { isAdmin, session, profileLoaded } = useSurvivor();
+  const { isAdmin, session, profileLoaded, welcomeWizardEnabled } = useSurvivor();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
