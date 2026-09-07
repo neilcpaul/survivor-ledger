@@ -112,7 +112,7 @@ function SeasonOverview() {
                       </span>
                     ) : (
                       <button className="btn" onClick={() => setConfirmReset(true)}>
-                        Reset original plan to current
+                        Set to Current
                       </button>
                     )}
                   </div>
