@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { SurvivalChart } from "@/components/SurvivalChart";
-import { Delta, Empty, StatCard, TeamChipLabel, WinPill } from "@/components/bits";
+import { Delta, Empty, StatCard } from "@/components/bits";
+import { WeekLedgerTable } from "@/components/WeekLedgerTable";
 import { useQuery } from "@tanstack/react-query";
 import { NewsTicker } from "@/components/news";
 import { fetchNews } from "@/lib/news";
 import { usePlanCurves, useSurvivor } from "@/lib/survivor-store";
-import { finalOdds, oddsAsOneInN, pct, ppDelta, survivalCurve, WEEKS } from "@/lib/survivor";
+import { finalOdds, oddsAsOneInN, pct, ppDelta, survivalCurve } from "@/lib/survivor";
 
 
 export const Route = createFileRoute("/")({
