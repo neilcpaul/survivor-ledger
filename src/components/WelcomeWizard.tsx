@@ -59,6 +59,12 @@ export function WelcomeWizard() {
   const [steps, setSteps] = useState<number[]>([]);
   const [manual, setManual] = useState(false);
   const decided = useRef(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const goStep = useCallback(
+    (dir: 1 | -1) => setStepIndex((i) => Math.max(0, Math.min(steps.length - 1, i + dir))),
+    [steps.length],
+  );
 
   useEffect(() => {
     if (decided.current) return;
@@ -88,6 +94,58 @@ export function WelcomeWizard() {
     window.addEventListener(OPEN_WIZARD_EVENT, onOpen);
     return () => window.removeEventListener(OPEN_WIZARD_EVENT, onOpen);
   }, []);
+
+  // Mobile swipe: left/right across the wizard panel moves to next/previous week.
+  useEffect(() => {
+    if (phase !== "wizard" || !panelRef.current) return;
+    const panel = panelRef.current;
+    const state = { startX: 0, startY: 0, active: false };
+
+    const onStart = (e: TouchEvent) => {
+      if (isInteractiveTarget(e.target)) return;
+      const t = e.touches[0];
+      state.startX = t.clientX;
+      state.startY = t.clientY;
+      state.active = true;
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (!state.active) return;
+      const t = e.touches[0];
+      const dx = t.clientX - state.startX;
+      const dy = t.clientY - state.startY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20) {
+        e.preventDefault();
+      }
+    };
+
+    const onEnd = (e: TouchEvent) => {
+      if (!state.active) return;
+      state.active = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - state.startX;
+      const dy = t.clientY - state.startY;
+      if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        goStep(dx < 0 ? 1 : -1);
+      }
+    };
+
+    const onCancel = () => {
+      state.active = false;
+    };
+
+    panel.addEventListener("touchstart", onStart, { passive: true });
+    panel.addEventListener("touchmove", onMove, { passive: false });
+    panel.addEventListener("touchend", onEnd, { passive: true });
+    panel.addEventListener("touchcancel", onCancel, { passive: true });
+    return () => {
+      panel.removeEventListener("touchstart", onStart);
+      panel.removeEventListener("touchmove", onMove);
+      panel.removeEventListener("touchend", onEnd);
+      panel.removeEventListener("touchcancel", onCancel);
+    };
+  }, [phase, goStep]);
+
 
   const close = useCallback(() => {
     markDismissed();
