@@ -975,6 +975,17 @@ table.grid tr.expandable:hover th {
   font-weight: 600;
   min-width: 0;
 }
+.news-ticker-item .news-headline {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+@media (min-width: 640px) {
+  .news-ticker-item .news-headline {
+    -webkit-line-clamp: 1;
+  }
+}
 .news-dots {
   display: flex;
   gap: 6px;
