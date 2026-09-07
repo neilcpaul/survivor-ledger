@@ -99,6 +99,8 @@ async function assertAdmin(userId: string) {
 }
 
 /** One row in the unified activity feed (activity_log + auth sign-ins). */
+export type ActivityDetail = Record<string, string | number | boolean | null>;
+
 export type ActivityRow = {
   id: string;
   created_at: string;
@@ -110,7 +112,7 @@ export type ActivityRow = {
   target_user_email: string | null;
   target_entry_id: string | null;
   target_entry_name: string | null;
-  detail: Record<string, unknown>;
+  detail: ActivityDetail;
 };
 
 export type AdminEntryRow = {
@@ -126,7 +128,7 @@ async function writeActivity(row: {
   event_type: string;
   target_user_id?: string | null;
   target_entry_id?: string | null;
-  detail?: Record<string, unknown>;
+  detail?: ActivityDetail;
 }) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   await supabaseAdmin.from("activity_log").insert({
@@ -146,7 +148,7 @@ async function writeActivity(row: {
 export const logUserActivity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (input: { eventType: string; entryId?: string | null; detail?: Record<string, unknown> }) => {
+    (input: { eventType: string; entryId?: string | null; detail?: ActivityDetail }) => {
       if (!input?.eventType) throw new Error("eventType is required");
       return input;
     },
@@ -409,10 +411,10 @@ export const adminActivityFeed = createServerFn({ method: "POST" })
       target_entry_id: r.target_entry_id,
       target_entry_name: r.target_entry_id
         ? (entryNameById.get(r.target_entry_id) ??
-          ((r.detail as Record<string, unknown> | null)?.["name"] as string | undefined) ??
+          ((r.detail as ActivityDetail | null)?.["name"] as string | undefined) ??
           null)
         : null,
-      detail: (r.detail as Record<string, unknown>) ?? {},
+      detail: (r.detail as ActivityDetail) ?? {},
     }));
 
     const loginRows = (logins.data ?? []) as {
