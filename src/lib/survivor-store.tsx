@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getOptimalPlan } from "./access.functions";
+import { getOptimalPlan, logUserActivity, type ActivityDetail } from "./access.functions";
 import {
   buildSlots,
   greedyPlan,
@@ -195,7 +195,9 @@ type Ctx = {
   resetOriginal: () => void;
   /** Every other entry's current plan, for the multi-entry chart overlay. */
   otherEntryPlans: { id: string; name: string; plan: Plan }[];
-  setPick: (week: number, teamId: string | undefined) => void;
+  setPick: (week: number, teamId: string | undefined, opts?: { log?: boolean }) => void;
+  /** Record an event in the unified activity log (signed-in users only). */
+  logActivity: (eventType: string, detail?: ActivityDetail) => void;
   resetPlan: () => void;
 
   editedWeeks: Set<number>;
@@ -362,6 +364,17 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   const entryIdRef = useRef<string | null>(null);
   entryIdRef.current = entryId;
 
+  const sessionRef = useRef<Session | null>(null);
+  sessionRef.current = session;
+
+  // Fire-and-forget: the activity trail must never block or break a pick write.
+  const logActivity = useCallback((eventType: string, detail?: ActivityDetail) => {
+    if (!sessionRef.current?.user) return;
+    void logUserActivity({
+      data: { eventType, entryId: entryIdRef.current, detail: detail ?? {} },
+    }).catch(() => {});
+  }, []);
+
   const persistOriginal = useCallback(
     (picks: Plan, lockedAt: string) => {
       const id = entryIdRef.current;
@@ -385,14 +398,17 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   );
 
   const commitOriginal = useCallback(
-    (picks: Plan) => {
+    (picks: Plan, manual = false) => {
       const lockedAt = new Date().toISOString();
+      logActivity(manual ? "original_plan_reset" : "original_plan_locked", {
+        weeks: Object.keys(picks).length,
+      });
       setOriginalPlan({ ...picks });
       setOriginalLockedAt(lockedAt);
       lockedRef.current = lockedAt;
       persistOriginal({ ...picks }, lockedAt);
     },
-    [persistOriginal],
+    [persistOriginal, logActivity],
   );
 
   /** One-time lock: the first time a plan holds all 18 weeks, it becomes the baseline. */
@@ -407,7 +423,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
 
   /** Manual reset — deliberately replaces whatever baseline existed. */
   const resetOriginal = useCallback(() => {
-    commitOriginal(plan);
+    commitOriginal(plan, true);
   }, [commitOriginal, plan]);
 
   /* ------------- seed a starting plan from the data ------------- */
@@ -491,8 +507,15 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   }, [entryId, slots, isAnalysis, entries, commitOriginal]);
 
   const setPick = useCallback(
-    (week: number, teamId: string | undefined) => {
+    (week: number, teamId: string | undefined, opts?: { log?: boolean }) => {
       setPlan((prev) => {
+        if (opts?.log !== false && prev[week] !== teamId) {
+          logActivity("pick_change", {
+            week,
+            from: prev[week] ?? null,
+            to: teamId ?? null,
+          });
+        }
         const next = { ...prev };
         if (!teamId) delete next[week];
         else {
@@ -511,7 +534,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
           .then(({ error }) => setSaveState(error ? "error" : "synced"));
       }
     },
-    [entryId, lockIfComplete],
+    [entryId, lockIfComplete, logActivity],
   );
 
   const resetPlan = useCallback(() => {
@@ -627,10 +650,11 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
         entryIdRef.current = data.id;
         qc.invalidateQueries({ queryKey: entriesKey });
         // Same completion check as any other write: a migrated 18/18 plan locks now.
+        logActivity("entry_create", { name: clean, carried_weeks: weeks.length });
         if (firstEntry && weeks.length) lockIfComplete({ ...plan, ...carried });
       }
     },
-    [session?.user?.id, qc, entriesKey, entries.length, plan, lockIfComplete],
+    [session?.user?.id, qc, entriesKey, entries.length, plan, lockIfComplete, logActivity],
   );
 
   const renameEntry = useCallback(
@@ -642,8 +666,9 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
       );
       const { error } = await supabase.from("entries").update({ name: clean }).eq("id", id);
       if (error) qc.invalidateQueries({ queryKey: entriesKey });
+      else logActivity("entry_rename", { entry_id: id, to: clean });
     },
-    [session?.user?.id, qc, entriesKey],
+    [session?.user?.id, qc, entriesKey, logActivity],
   );
 
   const deleteEntry = useCallback(
@@ -656,8 +681,9 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
       await supabase.from("picks").delete().eq("entry_id", id);
       const { error } = await supabase.from("entries").delete().eq("id", id);
       if (error) qc.invalidateQueries({ queryKey: entriesKey });
+      else logActivity("entry_delete", { entry_id: id, name: entries.find((e) => e.id === id)?.name ?? null });
     },
-    [session?.user?.id, qc, entriesKey, entries, entryId],
+    [session?.user?.id, qc, entriesKey, entries, entryId, logActivity],
   );
 
 
@@ -687,6 +713,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     otherEntryPlans,
 
     setPick,
+    logActivity,
     resetPlan,
     editedWeeks,
     optimal,
