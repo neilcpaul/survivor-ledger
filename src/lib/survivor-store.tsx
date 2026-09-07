@@ -60,6 +60,32 @@ async function fetchSyncState() {
 
 
 
+const GUEST_PLAN_KEY = "survivor-ledger.guest-plan";
+
+function readGuestPlan(): Plan {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(GUEST_PLAN_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    const plan: Plan = {};
+    for (const [week, teamId] of Object.entries(parsed)) {
+      if (typeof teamId === "string") plan[Number(week)] = teamId;
+    }
+    return plan;
+  } catch {
+    return {};
+  }
+}
+
+function writeGuestPlan(plan: Plan) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(GUEST_PLAN_KEY, JSON.stringify(plan));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 type Ctx = {
   teams: Team[];
   teamsById: Map<string, Team>;
