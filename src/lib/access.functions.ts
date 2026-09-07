@@ -61,15 +61,24 @@ export const getOptimalPlan = createServerFn({ method: "GET" })
     return { tier, plan };
   });
 
-async function assertAdmin(context: { supabase: ReturnType<typeof publicClient>; userId: string }) {
-  const { data } = await context.supabase.rpc("is_admin", { uid: context.userId });
-  if (data !== true) throw new Error("Forbidden");
+/**
+ * Verified server-side with the service role: the caller's identity comes from
+ * the validated bearer token, and no client role can reach this check directly.
+ */
+async function assertAdmin(userId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", userId)
+    .maybeSingle();
+  if (data?.is_admin !== true) throw new Error("Forbidden");
 }
 
 export const adminListUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdminUserRow[]> => {
-    await assertAdmin(context as never);
+    await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
     if (error) throw error;
@@ -100,7 +109,7 @@ export const adminSetAccess = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
-    await assertAdmin(context as never);
+    await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     if (data.isAdmin === false) {
