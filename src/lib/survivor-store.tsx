@@ -338,6 +338,23 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     refetchInterval: 60_000,
   });
 
+  // Public flag: whether first-time visitors are offered the welcome wizard.
+  const settingsQ = useQuery({
+    queryKey: ["site-settings"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("site_settings")
+        .select("welcome_wizard_enabled")
+        .eq("id", "global")
+        .maybeSingle();
+      return data ?? null;
+    },
+  });
+  const welcomeWizardEnabled = settingsQ.data?.welcome_wizard_enabled !== false;
+
+
+
 
   const teams = useMemo(() => teamsQ.data ?? [], [teamsQ.data]);
   const games = useMemo(() => gamesQ.data ?? [], [gamesQ.data]);
