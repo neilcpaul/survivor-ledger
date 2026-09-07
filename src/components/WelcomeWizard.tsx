@@ -194,7 +194,10 @@ export function WelcomeWizard() {
                   {t?.logo_url ? (
                     <img src={t.logo_url} alt="" width={34} height={34} loading="lazy" />
                   ) : null}
-                  <span className="welcome-pick-name">{t?.name ?? t?.abbr ?? s.teamId}</span>
+                  <span className="welcome-pick-name">
+                    {t?.name ?? t?.abbr ?? s.teamId}
+                    <span className="welcome-pick-opp">{oppLabel(s)}</span>
+                  </span>
                   <span className="welcome-pick-prob num">{pct(s.winProb)}</span>
                 </button>
               );
