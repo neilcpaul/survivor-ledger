@@ -134,10 +134,14 @@ export function NewsTicker({ articles }: { articles: Article[] }) {
         </button>
 
         <button className="news-ticker-item" onClick={() => setOpen(current)}>
-          {index === 0 ? <span className="pill scenario">Top story</span> : null}
-          {teamIds[0] ? <TeamBadge teamId={teamIds[0]} /> : null}
-          <span className="news-headline">{current.headline ?? "Story"}</span>
-          <span className="sub num">{relativeTime(current.published_at)}</span>
+          <div className="news-ticker-meta">
+            {index === 0 ? <span className="pill scenario">Top story</span> : null}
+            <TruncatedBadges teamIds={teamIds} publishedAt={current.published_at} showTime={false} />
+          </div>
+          <div className="news-ticker-body">
+            <span className="news-headline">{current.headline ?? "Story"}</span>
+            <span className="sub num">{relativeTime(current.published_at)}</span>
+          </div>
         </button>
 
         <button
