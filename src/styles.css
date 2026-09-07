@@ -998,6 +998,15 @@ table.grid tr.expandable:hover th {
   .news-ticker-row > .btn:last-child {
     display: none;
   }
+  .news-ticker-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .news-ticker-item .news-headline {
+    width: 100%;
+    flex: 0 0 auto;
+  }
 }
 .news-dots {
   display: flex;
