@@ -36,6 +36,11 @@ function agoLabel(iso: string | null): string {
 function EntrySwitcher() {
   const { entries, entryId, entryName, selectEntry, createEntry, renameEntry, deleteEntry } =
     useSurvivor();
+  // Display order only — alphabetical by name; the active entry is unchanged.
+  const sortedEntries = useMemo(
+    () => [...entries].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
+    [entries],
+  );
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -97,7 +102,7 @@ function EntrySwitcher() {
             </div>
           ) : null}
 
-          {entries.map((entry) => {
+          {sortedEntries.map((entry) => {
             const active = entry.id === entryId;
             if (confirmId === entry.id) {
               return (
