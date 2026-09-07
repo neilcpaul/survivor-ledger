@@ -216,67 +216,13 @@ function SeasonOverview() {
                 Change a pick
               </Link>
             </div>
-            <div className="scroll-x">
-              <table className="grid">
-                <thead>
-                  <tr>
-                    <th scope="col">Week</th>
-                    <th scope="col">Pick</th>
-                    <th scope="col">Opponent</th>
-                    <th scope="col">Win prob</th>
-                    <th scope="col">Cumulative</th>
-                    <th scope="col">vs. original</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {WEEKS.map((w, i) => {
-                    const point = curves.mine[i]!;
-                    const orig = curves.original[i]!;
-                    const team = point.teamId ? teamsById.get(point.teamId) : undefined;
-                    const opp = point.opponentId ? teamsById.get(point.opponentId) : undefined;
-                    const slot = point.teamId ? slots.get(w)?.get(point.teamId) : undefined;
-                    return (
-                      <tr key={w} style={editedWeeks.has(w) ? { background: "var(--surface-2)" } : undefined}>
-                        <th scope="row" className="num">
-                          {w}
-                          {editedWeeks.has(w) ? (
-                            <span className="pill scenario" style={{ marginLeft: 6 }}>
-                              edited
-                            </span>
-                          ) : null}
-                        </th>
-                        <td>
-                          <TeamChipLabel
-                            abbr={team?.abbr}
-                            logo={team?.logo_url}
-                            name={team?.name}
-                            teamId={team?.id}
-                          />
-                        </td>
-                        <td className="sub">
-                          {opp ? `${slot?.isHome ? "vs" : "@"} ${opp.abbr}` : "—"}
-                        </td>
-                        <td>
-                          <WinPill p={point.winProb} />
-                        </td>
-                        <td className="num">
-                          {curves.mine.slice(0, i + 1).some((p) => p.winProb != null)
-                            ? pct(point.cumulative, 2)
-                            : "—"}
-                        </td>
-                        <td>
-                          {originalLocked ? (
-                            <Delta pp={ppDelta(point.cumulative, orig.cumulative)} />
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <WeekLedgerTable
+              curve={curves.mine}
+              originalCurve={curves.original}
+              originalLocked={originalLocked}
+              editedWeeks={editedWeeks}
+            />
+
           </section>
         </>
       )}
