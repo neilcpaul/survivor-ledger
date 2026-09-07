@@ -22,7 +22,14 @@ import {
   type Team,
 } from "./survivor";
 
-type Entry = { id: string; name: string; created_at: string };
+type Entry = {
+  id: string;
+  name: string;
+  created_at: string;
+  original_picks?: unknown;
+  original_locked_at?: string | null;
+};
+
 
 const REFRESH_WINDOW_MS = 5 * 60 * 1000;
 
@@ -86,6 +93,52 @@ function writeGuestPlan(plan: Plan) {
   }
 }
 
+const GUEST_ORIGINAL_KEY = "survivor-ledger.guest-original";
+
+type OriginalBaseline = { picks: Plan; lockedAt: string | null };
+
+function planFromJson(raw: unknown): Plan {
+  const plan: Plan = {};
+  if (raw && typeof raw === "object") {
+    for (const [week, teamId] of Object.entries(raw as Record<string, unknown>)) {
+      if (typeof teamId === "string") plan[Number(week)] = teamId;
+    }
+  }
+  return plan;
+}
+
+function readGuestOriginal(): OriginalBaseline {
+  if (typeof window === "undefined") return { picks: {}, lockedAt: null };
+  try {
+    const raw = window.localStorage.getItem(GUEST_ORIGINAL_KEY);
+    if (!raw) return { picks: {}, lockedAt: null };
+    const parsed = JSON.parse(raw) as { originalPicks?: unknown; originalLockedAt?: unknown };
+    return {
+      picks: planFromJson(parsed.originalPicks),
+      lockedAt: typeof parsed.originalLockedAt === "string" ? parsed.originalLockedAt : null,
+    };
+  } catch {
+    return { picks: {}, lockedAt: null };
+  }
+}
+
+function writeGuestOriginal(picks: Plan, lockedAt: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      GUEST_ORIGINAL_KEY,
+      JSON.stringify({ originalPicks: picks, originalLockedAt: lockedAt }),
+    );
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function isComplete(plan: Plan): boolean {
+  return WEEKS.every((w) => !!plan[w]);
+}
+
+
 type Ctx = {
   teams: Team[];
   teamsById: Map<string, Team>;
@@ -100,8 +153,15 @@ type Ctx = {
   canRefresh: boolean;
   plan: Plan;
   originalPlan: Plan;
+  /** True once a baseline has been locked for this entry / local plan. */
+  originalLocked: boolean;
+  /** Overwrite the baseline with the current picks (manual reset). */
+  resetOriginal: () => void;
+  /** Every other entry's current plan, for the multi-entry chart overlay. */
+  otherEntryPlans: { id: string; name: string; plan: Plan }[];
   setPick: (week: number, teamId: string | undefined) => void;
   resetPlan: () => void;
+
   editedWeeks: Set<number>;
   optimal: Plan;
   currentWeek: number;
@@ -136,6 +196,11 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   const [entryId, setEntryId] = useState<string | null>(null);
   const [plan, setPlan] = useState<Plan>({});
   const [originalPlan, setOriginalPlan] = useState<Plan>({});
+  const [originalLockedAt, setOriginalLockedAt] = useState<string | null>(null);
+  // Read inside callbacks so a pick write never re-locks an existing baseline.
+  const lockedRef = useRef<string | null>(null);
+  lockedRef.current = originalLockedAt;
+
   const [saveState, setSaveState] = useState<Ctx["saveState"]>("guest");
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshClick, setLastRefreshClick] = useState<number>(0);
@@ -234,7 +299,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("entries")
-        .select("id, name, created_at")
+        .select("id, name, created_at, original_picks, original_locked_at")
         .order("created_at");
       if (error) throw error;
       return (data ?? []) as Entry[];
@@ -254,6 +319,61 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   }, [entries, entryId, session?.user?.id]);
 
 
+  /* ---------------- the "original plan" baseline ---------------- */
+  // Only the team selections are stored — never a probability computed at a
+  // past moment. Both the current and original lines are re-derived from
+  // today's synced odds, so the original shifts as ESPN's model moves.
+  const entryIdRef = useRef<string | null>(null);
+  entryIdRef.current = entryId;
+
+  const persistOriginal = useCallback(
+    (picks: Plan, lockedAt: string) => {
+      const id = entryIdRef.current;
+      if (id) {
+        void supabase
+          .from("entries")
+          .update({ original_picks: picks as never, original_locked_at: lockedAt })
+          .eq("id", id)
+          .then(() => {
+            qc.setQueryData<Entry[]>(["entries", session?.user?.id ?? "anon"], (prev) =>
+              (prev ?? []).map((e) =>
+                e.id === id ? { ...e, original_picks: picks, original_locked_at: lockedAt } : e,
+              ),
+            );
+          });
+      } else if (!session?.user) {
+        writeGuestOriginal(picks, lockedAt);
+      }
+    },
+    [qc, session?.user?.id],
+  );
+
+  const commitOriginal = useCallback(
+    (picks: Plan) => {
+      const lockedAt = new Date().toISOString();
+      setOriginalPlan({ ...picks });
+      setOriginalLockedAt(lockedAt);
+      lockedRef.current = lockedAt;
+      persistOriginal({ ...picks }, lockedAt);
+    },
+    [persistOriginal],
+  );
+
+  /** One-time lock: the first time a plan holds all 18 weeks, it becomes the baseline. */
+  const lockIfComplete = useCallback(
+    (candidate: Plan) => {
+      if (lockedRef.current) return;
+      if (!isComplete(candidate)) return;
+      commitOriginal(candidate);
+    },
+    [commitOriginal],
+  );
+
+  /** Manual reset — deliberately replaces whatever baseline existed. */
+  const resetOriginal = useCallback(() => {
+    commitOriginal(plan);
+  }, [commitOriginal, plan]);
+
   /* ------------- seed a starting plan from the data ------------- */
   // Analysis tier starts from a computed plan; basic tier (and guests) start
   // from a blank ledger — restored from this browser's own storage for guests.
@@ -265,9 +385,16 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     seededTier.current = key;
     seeded.current = true;
     const seed = isAnalysis ? greedyPlan(slots) : {};
-    setOriginalPlan(seed);
-    setPlan(session?.user ? seed : { ...seed, ...readGuestPlan() });
-  }, [isAnalysis, slots, profileQ.isLoading, session?.user?.id]);
+    const next = session?.user ? seed : { ...seed, ...readGuestPlan() };
+    setPlan(next);
+    if (!session?.user) {
+      const stored = readGuestOriginal();
+      setOriginalPlan(stored.picks);
+      setOriginalLockedAt(stored.lockedAt);
+      lockedRef.current = stored.lockedAt;
+      if (!stored.lockedAt && isComplete(next)) commitOriginal(next);
+    }
+  }, [isAnalysis, slots, profileQ.isLoading, session?.user?.id, commitOriginal]);
 
   // Guest picks live in this browser only, so a reload keeps them.
   useEffect(() => {
@@ -278,6 +405,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
   /* ------------- load a signed-in entry's saved picks ------------- */
   useEffect(() => {
     if (!entryId || slots.size === 0) return;
+    const entry = entries.find((e) => e.id === entryId);
     let cancelled = false;
     supabase
       .from("picks")
@@ -290,14 +418,18 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
         for (const row of data ?? []) {
           if (row.team_id) saved[row.week] = row.team_id;
         }
-        setOriginalPlan(base);
+        const lockedAt = entry?.original_locked_at ?? null;
+        setOriginalPlan(lockedAt ? planFromJson(entry?.original_picks) : {});
+        setOriginalLockedAt(lockedAt);
+        lockedRef.current = lockedAt;
         setPlan(saved);
         setSaveState("synced");
+        if (!lockedAt && isComplete(saved)) commitOriginal(saved);
       });
     return () => {
       cancelled = true;
     };
-  }, [entryId, slots, isAnalysis]);
+  }, [entryId, slots, isAnalysis, entries, commitOriginal]);
 
   const setPick = useCallback(
     (week: number, teamId: string | undefined) => {
@@ -309,6 +441,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
           for (const w of WEEKS) if (next[w] === teamId && w !== week) delete next[w];
           next[week] = teamId;
         }
+        lockIfComplete(next);
         return next;
       });
       if (entryId) {
@@ -319,7 +452,7 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
           .then(({ error }) => setSaveState(error ? "error" : "synced"));
       }
     },
-    [entryId],
+    [entryId, lockIfComplete],
   );
 
   const resetPlan = useCallback(() => {
@@ -336,9 +469,38 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
 
   const editedWeeks = useMemo(() => {
     const s = new Set<number>();
+    if (!originalLockedAt) return s;
     for (const w of WEEKS) if (plan[w] !== originalPlan[w]) s.add(w);
     return s;
-  }, [plan, originalPlan]);
+  }, [plan, originalPlan, originalLockedAt]);
+
+  /* -------- every other entry's plan, for the chart overlay -------- */
+  const otherPicksQ = useQuery({
+    queryKey: ["all-entry-picks", session?.user?.id ?? "anon"],
+    enabled: !!session?.user && entries.length > 1,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("picks").select("entry_id, week, team_id");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const otherEntryPlans = useMemo(() => {
+    if (!session?.user || entries.length < 2) return [];
+    const byEntry = new Map<string, Plan>();
+    for (const row of otherPicksQ.data ?? []) {
+      if (!row.team_id) continue;
+      const p = byEntry.get(row.entry_id) ?? {};
+      p[row.week] = row.team_id;
+      byEntry.set(row.entry_id, p);
+    }
+    return entries
+      .filter((e) => e.id !== entryId)
+      .map((e) => ({ id: e.id, name: e.name, plan: byEntry.get(e.id) ?? {} }))
+      .filter((e) => Object.keys(e.plan).length > 0);
+  }, [entries, entryId, otherPicksQ.data, session?.user?.id]);
+
 
   /* ---------------- refresh ---------------- */
   // Guests can't read sync_state (auth-only), so fall back to the freshest
@@ -444,6 +606,10 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     canRefresh,
     plan,
     originalPlan,
+    originalLocked: !!originalLockedAt,
+    resetOriginal,
+    otherEntryPlans,
+
     setPick,
     resetPlan,
     editedWeeks,

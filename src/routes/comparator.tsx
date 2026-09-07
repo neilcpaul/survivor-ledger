@@ -87,7 +87,15 @@ function Comparator() {
     resetPlan,
     optimal,
     isAnalysis,
+    originalLocked,
+    otherEntryPlans,
   } = useSurvivor();
+  const otherCurves = useMemo(
+    () => otherEntryPlans.map((e) => ({ ...e, curve: survivalCurve(slots, e.plan) })),
+    [otherEntryPlans, slots],
+  );
+  const ENTRY_COLORS = ["var(--scenario)", "var(--optimal)", "var(--proposed)", "var(--seq-high)"];
+
   const navigate = useNavigate();
 
   // Alternatives are scored against the optimal solver, so this page is
@@ -653,6 +661,24 @@ function Comparator() {
                   curve: previewCurve,
                   dashed: true,
                 },
+                ...(originalLocked
+                  ? [
+                      {
+                        key: "orig",
+                        label: "Original plan",
+                        color: "var(--seq-high)",
+                        curve: curves.original,
+                        dashed: true,
+                      },
+                    ]
+                  : []),
+
+                ...otherCurves.map((e, i) => ({
+                  key: `entry-${e.id}`,
+                  label: e.name,
+                  color: ENTRY_COLORS[i % ENTRY_COLORS.length]!,
+                  curve: e.curve,
+                })),
                 ...(hasProposal
                   ? [
                       {
@@ -664,6 +690,7 @@ function Comparator() {
                       },
                     ]
                   : []),
+
                 {
                   key: "opt",
                   label: "Optimal plan",

@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { SurvivalChart } from "@/components/SurvivalChart";
@@ -6,7 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { NewsTicker } from "@/components/news";
 import { fetchNews } from "@/lib/news";
 import { usePlanCurves, useSurvivor } from "@/lib/survivor-store";
-import { finalOdds, oddsAsOneInN, pct, ppDelta, WEEKS } from "@/lib/survivor";
+import { finalOdds, oddsAsOneInN, pct, ppDelta, survivalCurve, WEEKS } from "@/lib/survivor";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -30,15 +32,35 @@ export const Route = createFileRoute("/")({
   component: SeasonOverview,
 });
 
+const ENTRY_COLORS = ["var(--scenario)", "var(--optimal)", "var(--proposed)", "var(--seq-high)"];
+
 function SeasonOverview() {
-  const { slots, teamsById, loading, currentWeek, editedWeeks, resetPlan, isAnalysis, saveState, entryName } =
-    useSurvivor();
+  const {
+    slots,
+    teamsById,
+    loading,
+    currentWeek,
+    editedWeeks,
+    resetPlan,
+    isAnalysis,
+    saveState,
+    entryName,
+    originalLocked,
+    resetOriginal,
+    otherEntryPlans,
+  } = useSurvivor();
   const curves = usePlanCurves();
+  const [confirmReset, setConfirmReset] = useState(false);
   const { data: news } = useQuery({
     queryKey: ["news", 20],
     queryFn: () => fetchNews(20),
     staleTime: 60_000,
   });
+
+  const otherCurves = useMemo(
+    () => otherEntryPlans.map((e) => ({ ...e, curve: survivalCurve(slots, e.plan) })),
+    [otherEntryPlans, slots],
+  );
 
   const mine = finalOdds(curves.mine);
   const original = finalOdds(curves.original);
@@ -47,6 +69,7 @@ function SeasonOverview() {
     .filter((p) => p.winProb != null)
     .sort((a, b) => (a.winProb ?? 1) - (b.winProb ?? 1))[0];
   const hasPicks = curves.mine.some((p) => p.winProb != null);
+
 
   return (
     <AppShell title="Season Overview">
@@ -63,9 +86,39 @@ function SeasonOverview() {
             />
             <StatCard
               label="vs. original plan"
-              value={<Delta pp={ppDelta(mine, original)} />}
-              sub={`Original ${pct(original, 2)}`}
+              value={originalLocked ? <Delta pp={ppDelta(mine, original)} /> : "—"}
+              sub={
+                <>
+                  {originalLocked
+                    ? `Original ${pct(original, 2)}`
+                    : "Set once all 18 weeks are picked"}
+                  <div style={{ marginTop: 6 }}>
+                    {confirmReset ? (
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span>Reset original plan to today's picks? This replaces your current comparison baseline.</span>
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            resetOriginal();
+                            setConfirmReset(false);
+                          }}
+                        >
+                          Confirm
+                        </button>
+                        <button className="btn" onClick={() => setConfirmReset(false)}>
+                          Cancel
+                        </button>
+                      </span>
+                    ) : (
+                      <button className="btn" onClick={() => setConfirmReset(true)}>
+                        Reset original plan to current
+                      </button>
+                    )}
+                  </div>
+                </>
+              }
             />
+
             {isAnalysis ? (
               <StatCard
                 label="Optimal ceiling"
@@ -112,13 +165,23 @@ function SeasonOverview() {
               band={curves.mine}
               series={[
                 { key: "mine", label: "Current plan", color: "var(--accent)", curve: curves.mine },
-                {
-                  key: "orig",
-                  label: "Original plan",
-                  color: "var(--scenario)",
-                  curve: curves.original,
-                  dashed: true,
-                },
+                ...(originalLocked
+                  ? [
+                      {
+                        key: "orig",
+                        label: "Original plan",
+                        color: "var(--scenario)",
+                        curve: curves.original,
+                        dashed: true,
+                      },
+                    ]
+                  : []),
+                ...otherCurves.map((e, i) => ({
+                  key: `entry-${e.id}`,
+                  label: e.name,
+                  color: ENTRY_COLORS[i % ENTRY_COLORS.length]!,
+                  curve: e.curve,
+                })),
                 ...(isAnalysis
                   ? [
                       {
@@ -131,6 +194,7 @@ function SeasonOverview() {
                     ]
                   : []),
               ]}
+
             />
           </section>
 
@@ -198,7 +262,11 @@ function SeasonOverview() {
                             : "—"}
                         </td>
                         <td>
-                          <Delta pp={ppDelta(point.cumulative, orig.cumulative)} />
+                          {originalLocked ? (
+                            <Delta pp={ppDelta(point.cumulative, orig.cumulative)} />
+                          ) : (
+                            "—"
+                          )}
                         </td>
                       </tr>
                     );
