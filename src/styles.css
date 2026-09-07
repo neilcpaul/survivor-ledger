@@ -1014,6 +1014,40 @@ table.grid tr.expandable:hover th {
   gap: 8px;
   flex-wrap: wrap;
 }
+.news-badges-truncate {
+  flex-wrap: nowrap;
+  overflow: hidden;
+  min-width: 0;
+}
+.news-badges-measure {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.news-badge-overflow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: help;
+  flex-shrink: 0;
+}
+.news-badge-overflow-tooltip {
+  max-width: 240px;
+}
+.news-badge-overflow-tooltip .news-badges {
+  flex-wrap: wrap;
+}
+
 
 .news-grid {
   display: grid;
