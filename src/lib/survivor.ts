@@ -197,19 +197,30 @@ function hungarian(cost: number[][]): number[] {
 
 const BIG = 1000; // effective cost of "no game / unusable" cells
 
-/** Optimal one-team-per-season plan maximising the season-long product. */
+/**
+ * Optimal one-team-per-season plan maximising the season-long product.
+ *
+ * `weights` optionally scales each week's -log(p) cost (index 0 = week 1).
+ * A weight above 1 makes that week's risk count for more (conservative), below
+ * 1 makes it count for less (aggressive). Default 1.0 everywhere reproduces the
+ * plain maximum-survival solution — the algorithm itself is unchanged, only the
+ * cost matrix is transformed before solving.
+ */
 export function optimalPlan(
   slots: Map<number, Map<string, Slot>>,
   teamIds: string[],
+  weights?: number[],
 ): Plan {
   if (!teamIds.length) return {};
-  const cost = WEEKS.map((week) =>
-    teamIds.map((teamId) => {
+  const cost = WEEKS.map((week, wi) => {
+    const w = weights?.[wi];
+    const weight = typeof w === "number" && w > 0 ? w : 1;
+    return teamIds.map((teamId) => {
       const s = slots.get(week)?.get(teamId);
       if (!s || s.winProb <= 0) return BIG;
-      return -Math.log(s.winProb);
-    }),
-  );
+      return -Math.log(s.winProb) * weight;
+    });
+  });
   const assignment = hungarian(cost);
   const plan: Plan = {};
   assignment.forEach((col, row) => {
@@ -220,6 +231,7 @@ export function optimalPlan(
   });
   return plan;
 }
+
 
 /** A reasonable default "original plan": greedy highest win probability. */
 export function greedyPlan(slots: Map<number, Map<string, Slot>>): Plan {
