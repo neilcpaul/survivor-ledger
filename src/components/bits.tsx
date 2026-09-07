@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { pct, tierOf } from "@/lib/survivor";
 
