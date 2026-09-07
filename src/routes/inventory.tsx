@@ -153,7 +153,7 @@ function Inventory() {
                   {rows.map(({ team, usedWeek, bestSlot, byes, avg }) => (
                     <tr key={team.id} style={usedWeek ? { opacity: 0.62 } : undefined}>
                       <th scope="row">
-                        <TeamChipLabel abbr={team.abbr} logo={team.logo_url} name={team.name} />
+                        <TeamChipLabel abbr={team.abbr} logo={team.logo_url} name={team.name} teamId={team.id} />
                       </th>
                       <td className="sub">
                         {team.conference ?? "—"} {team.division ?? ""}
