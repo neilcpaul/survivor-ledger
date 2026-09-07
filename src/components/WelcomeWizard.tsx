@@ -245,7 +245,8 @@ export function WelcomeWizard() {
       ) : null}
 
       {phase === "wizard" && week ? (
-        <div className="welcome-panel welcome-fade" key={week}>
+        <div ref={panelRef} className="welcome-panel welcome-fade" key={week}>
+
           <div className="welcome-controls">
             <button className="btn" onClick={close}>
               Skip
