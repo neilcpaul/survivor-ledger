@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          actor_id: string | null
+          actor_type: string
+          created_at: string
+          detail: Json
+          event_type: string
+          id: string
+          target_entry_id: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_type: string
+          created_at?: string
+          detail?: Json
+          event_type: string
+          id?: string
+          target_entry_id?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_type?: string
+          created_at?: string
+          detail?: Json
+          event_type?: string
+          id?: string
+          target_entry_id?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       entries: {
         Row: {
           created_at: string
@@ -352,6 +385,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_recent_logins: {
+        Args: { _limit?: number }
+        Returns: {
+          action: string
+          created_at: string
+          id: string
+          user_id: string
+        }[]
+      }
       is_admin: { Args: { uid: string }; Returns: boolean }
     }
     Enums: {
