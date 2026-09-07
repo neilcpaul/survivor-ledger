@@ -822,6 +822,8 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     signOut,
     saveState: !session?.user ? "guest" : entryId ? saveState : "no-entry",
     entryName: entries.find((e) => e.id === entryId)?.name ?? null,
+    welcomeWizardEnabled,
+
   };
 
   return <SurvivorContext.Provider value={value}>{children}</SurvivorContext.Provider>;
