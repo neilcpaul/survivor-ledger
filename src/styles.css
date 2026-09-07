@@ -954,6 +954,11 @@ table.grid tr.expandable:hover th {
   gap: 8px;
   min-width: 0;
 }
+@media (max-width: 639px) {
+  .news-ticker-row {
+    flex-wrap: wrap;
+  }
+}
 .news-ticker-item {
   flex: 1;
   min-width: 0;
@@ -967,6 +972,14 @@ table.grid tr.expandable:hover th {
   text-align: left;
   color: inherit;
   font: inherit;
+}
+@media (max-width: 639px) {
+  .news-ticker-item {
+    flex-basis: 100%;
+    order: -1;
+    padding-left: 0;
+    padding-right: 0;
+  }
 }
 .news-ticker-item:hover .news-headline {
   color: var(--accent);
