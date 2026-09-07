@@ -363,10 +363,36 @@ function UserRows({
             </button>
           )}
         </td>
+        <td>
+          {confirmRemove ? (
+            <span className="flex items-center gap-2 flex-wrap">
+              <span className="sub">Delete this account and all its entries?</span>
+              <button
+                className="btn"
+                style={{ color: "var(--critical)", borderColor: "var(--critical)" }}
+                disabled={removeUser.isPending}
+                onClick={() => removeUser.mutate()}
+              >
+                {removeUser.isPending ? "Removing…" : "Confirm"}
+              </button>
+              <button className="btn" onClick={() => setConfirmRemove(false)}>
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button
+              className="btn"
+              aria-label={`Remove account ${label}`}
+              onClick={() => setConfirmRemove(true)}
+            >
+              Remove
+            </button>
+          )}
+        </td>
       </tr>
       {open ? (
         <tr>
-          <td colSpan={5}>
+          <td colSpan={6}>
             {user.entries.length === 0 ? (
               <Empty>No entries for this member.</Empty>
             ) : (
