@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { SurvivalChart } from "@/components/SurvivalChart";
@@ -7,6 +7,7 @@ import { WeekLedgerTable } from "@/components/WeekLedgerTable";
 import { useQuery } from "@tanstack/react-query";
 import { NewsTicker } from "@/components/news";
 import { fetchNews } from "@/lib/news";
+import { OPEN_WIZARD_EVENT } from "@/components/WelcomeWizard";
 import { usePlanCurves, useSurvivor } from "@/lib/survivor-store";
 import { finalOdds, oddsAsOneInN, pct, ppDelta, survivalCurve } from "@/lib/survivor";
 
