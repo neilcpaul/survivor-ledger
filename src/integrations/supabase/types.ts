@@ -19,18 +19,24 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          original_locked_at: string | null
+          original_picks: Json | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
+          original_locked_at?: string | null
+          original_picks?: Json | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          original_locked_at?: string | null
+          original_picks?: Json | null
           user_id?: string
         }
         Relationships: []
