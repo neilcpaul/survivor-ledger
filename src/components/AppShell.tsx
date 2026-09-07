@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { RefreshCw } from "lucide-react";
 import { useSurvivor } from "@/lib/survivor-store";
+import { OPEN_WIZARD_EVENT } from "@/components/WelcomeWizard";
 
 const ALL_NAV = [
   { to: "/", label: "Season Overview" },
@@ -13,15 +14,20 @@ const ALL_NAV = [
   { to: "/admin", label: "Admin" },
 ] as const;
 
-type NavItem = (typeof ALL_NAV)[number];
+type RoutePath = (typeof ALL_NAV)[number]["to"];
+type NavItem = { key: string; label: string; to?: RoutePath; action?: "wizard" };
+
+const WIZARD_ITEM: NavItem = { key: "wizard", label: "Pick Wizard", action: "wizard" };
 
 function useNav(): NavItem[] {
   const { isAnalysis, isAdmin } = useSurvivor();
-  return ALL_NAV.filter(
+  const items: NavItem[] = ALL_NAV.filter(
     (item) =>
       (item.to !== "/comparator" || isAnalysis) && (item.to !== "/admin" || isAdmin),
-  );
+  ).map((item) => ({ key: item.to, label: item.label, to: item.to }));
+  return [...items, WIZARD_ITEM];
 }
+
 
 function agoLabel(iso: string | null): string {
   if (!iso) return "never synced";
@@ -296,6 +302,7 @@ function RailNav({ pathname }: { pathname: string }) {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(NAV.length);
   const [open, setOpen] = useState(false);
+  const openWizard = () => window.dispatchEvent(new CustomEvent(OPEN_WIZARD_EVENT));
 
   // Measure each nav item once from a hidden mirror list, then work out how
   // many fit beside the brand on the horizontal (narrow-screen) rail.
@@ -368,18 +375,32 @@ function RailNav({ pathname }: { pathname: string }) {
       </div>
 
       <div className="nav-list" role="tablist" aria-orientation="vertical">
-        {visible.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            role="tab"
-            aria-selected={pathname === item.to}
-            className="nav-item"
-          >
-            <span className="nav-dot" aria-hidden="true" />
-            {item.label}
-          </Link>
-        ))}
+        {visible.map((item) =>
+          item.to ? (
+            <Link
+              key={item.key}
+              to={item.to}
+              role="tab"
+              aria-selected={pathname === item.to}
+              className="nav-item"
+            >
+              <span className="nav-dot" aria-hidden="true" />
+              {item.label}
+            </Link>
+          ) : (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={false}
+              className="nav-item"
+              onClick={openWizard}
+            >
+              <span className="nav-dot" aria-hidden="true" />
+              {item.label}
+            </button>
+          ),
+        )}
       </div>
 
       {overflow.length ? (
@@ -398,19 +419,35 @@ function RailNav({ pathname }: { pathname: string }) {
               <div className="label" style={{ marginBottom: 6 }}>
                 Sections
               </div>
-              {overflow.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  role="menuitem"
-                  aria-selected={pathname === item.to}
-                  className="nav-item"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="nav-dot" aria-hidden="true" />
-                  {item.label}
-                </Link>
-              ))}
+              {overflow.map((item) =>
+                item.to ? (
+                  <Link
+                    key={item.key}
+                    to={item.to}
+                    role="menuitem"
+                    aria-selected={pathname === item.to}
+                    className="nav-item"
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="nav-dot" aria-hidden="true" />
+                    {item.label}
+                  </Link>
+                ) : (
+                  <button
+                    key={item.key}
+                    type="button"
+                    role="menuitem"
+                    className="nav-item"
+                    onClick={() => {
+                      setOpen(false);
+                      openWizard();
+                    }}
+                  >
+                    <span className="nav-dot" aria-hidden="true" />
+                    {item.label}
+                  </button>
+                ),
+              )}
             </div>
           ) : null}
         </div>
@@ -419,7 +456,7 @@ function RailNav({ pathname }: { pathname: string }) {
       {/* hidden mirror used only to measure natural item widths */}
       <div className="nav-measure" aria-hidden="true" ref={measureRef}>
         {NAV.map((item) => (
-          <span key={item.to} className="nav-item">
+          <span key={item.key} className="nav-item">
             <span className="nav-dot" />
             {item.label}
           </span>

@@ -1338,7 +1338,18 @@ button.badge.legend-toggle {
   font-weight: 600;
   min-width: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
+.welcome-pick-opp {
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .welcome-pick-prob {
   font-weight: 600;
   color: var(--accent);
