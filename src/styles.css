@@ -1510,3 +1510,29 @@ button.badge.legend-toggle {
 }
 .livebar > span:first-child { background: var(--accent); }
 .livebar > span:last-child { background: var(--scenario); }
+
+/* ---------- expanded fixture summary ---------- */
+.summary-stack { display: grid; gap: 18px; margin-bottom: 18px; }
+.summary-stack h4 {
+  font-family: var(--font-display, inherit);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin: 0 0 6px;
+}
+.grid.compact th, .grid.compact td { padding: 4px 8px; font-size: 13px; }
+.scoring-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.scoring-timeline li {
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+@media (max-width: 640px) {
+  .scoring-timeline li { grid-template-columns: 1fr; gap: 2px; }
+}
+.leader-item { min-width: 160px; }
