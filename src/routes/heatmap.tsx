@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Empty } from "@/components/bits";
 import { useSurvivor } from "@/lib/survivor-store";
-import { pct, seqColor, WEEKS } from "@/lib/survivor";
+import { pct, pickOutcome, seqColor, WEEKS } from "@/lib/survivor";
 
 export const Route = createFileRoute("/heatmap")({
   head: () => ({
@@ -27,7 +27,8 @@ export const Route = createFileRoute("/heatmap")({
 });
 
 function Heatmap() {
-  const { teams, slots, plan, teamsById, loading, setPick, currentWeek } = useSurvivor();
+  const { teams, slots, plan, teamsById, loading, setPick, currentWeek, gamesByWeekTeam } =
+    useSurvivor();
   const [conf, setConf] = useState<"all" | "AFC" | "NFC">("all");
 
   const usedWeekByTeam = useMemo(() => {
