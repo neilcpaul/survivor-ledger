@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { Empty, StatCard, TeamChipLabel, WinPill } from "@/components/bits";
+import { Empty, ResultPill, StatCard, TeamChipLabel, WinPill } from "@/components/bits";
 import { useSurvivor } from "@/lib/survivor-store";
-import { byeWeeks, pct, WEEKS } from "@/lib/survivor";
+import { byeWeeks, pct, pickOutcome, WEEKS } from "@/lib/survivor";
 
 export const Route = createFileRoute("/inventory")({
   head: () => ({
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/inventory")({
 type SortKey = "best" | "abbr" | "spent";
 
 function Inventory() {
-  const { teams, slots, plan, teamsById, loading, currentWeek } = useSurvivor();
+  const { teams, slots, plan, teamsById, loading, currentWeek, gamesByWeekTeam } = useSurvivor();
   const [sort, setSort] = useState<SortKey>("best");
   const [filter, setFilter] = useState<"all" | "available" | "spent">("all");
 
