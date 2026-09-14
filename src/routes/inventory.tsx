@@ -160,7 +160,17 @@ function Inventory() {
                       </td>
                       <td>
                         {usedWeek ? (
-                          <span className="pill neutral">Spent · W{usedWeek}</span>
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="pill neutral">Spent · W{usedWeek}</span>
+                            {(() => {
+                              // A team committed in a past week: show how it went.
+                              const outcome = pickOutcome(
+                                gamesByWeekTeam.get(`${usedWeek}:${team.id}`),
+                                team.id,
+                              );
+                              return outcome ? <ResultPill outcome={outcome} /> : null;
+                            })()}
+                          </span>
                         ) : (
                           <span className="pill accent">Available</span>
                         )}
