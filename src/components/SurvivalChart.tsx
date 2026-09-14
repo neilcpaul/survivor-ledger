@@ -2,7 +2,18 @@ import { useMemo, useRef, useState } from "react";
 import type { CurvePoint } from "@/lib/survivor";
 import { pct } from "@/lib/survivor";
 
-type Series = { key: string; label: string; color: string; curve: CurvePoint[]; dashed?: boolean };
+type Series = {
+  key: string;
+  label: string;
+  color: string;
+  curve: CurvePoint[];
+  dashed?: boolean;
+  /** Draw weeks before the season clock as the realised (solid) path and the
+   *  rest as a lighter forecast. */
+  split?: boolean;
+};
+
+type Settled = CurvePoint & { settled?: boolean; outcome?: "won" | "lost" | "tied" | null };
 
 const W = 720;
 const H = 300;
@@ -45,13 +56,16 @@ export function SurvivalChart({
   const path = (curve: CurvePoint[]) =>
     curve.map((p, i) => `${i === 0 ? "M" : "L"}${x(p.week).toFixed(1)},${y(p.cumulative).toFixed(1)}`).join(" ");
 
-  const bandPath = band
-    ? [
-        ...band.map((p, i) => `${i === 0 ? "M" : "L"}${x(p.week).toFixed(1)},${y(p.cumulative + p.sd).toFixed(1)}`),
-        ...[...band].reverse().map((p) => `L${x(p.week).toFixed(1)},${y(Math.max(min, p.cumulative - p.sd)).toFixed(1)}`),
-        "Z",
-      ].join(" ")
-    : null;
+  // Uncertainty only applies to what hasn't happened yet.
+  const bandPts = currentWeek ? (band ?? []).filter((p) => p.week >= currentWeek) : band;
+  const bandPath = bandPts && bandPts.length > 1 ? buildBand(bandPts) : null;
+  function buildBand(pts: CurvePoint[]) {
+    return [
+      ...pts.map((p, i) => `${i === 0 ? "M" : "L"}${x(p.week).toFixed(1)},${y(p.cumulative + p.sd).toFixed(1)}`),
+      ...[...pts].reverse().map((p) => `L${x(p.week).toFixed(1)},${y(Math.max(min, p.cumulative - p.sd)).toFixed(1)}`),
+      "Z",
+    ].join(" ");
+  }
 
   /** Map a pointer position onto the nearest week on the axis. */
   const weekAt = (clientX: number): number | null => {
@@ -101,6 +115,26 @@ export function SurvivalChart({
               W{w}
             </text>
           ))}
+          {currentWeek && currentWeek > 1 ? (
+            <rect
+              x={PAD.left}
+              y={PAD.top}
+              width={Math.max(0, x(currentWeek) - PAD.left)}
+              height={H - PAD.top - PAD.bottom}
+              fill="var(--ink)"
+              opacity={0.045}
+            />
+          ) : null}
+          {currentWeek ? (
+            <text
+              x={x(currentWeek) + 4}
+              y={PAD.top + 10}
+              fontSize={10}
+              fill="var(--ink-faint)"
+            >
+              Now · Week {currentWeek}
+            </text>
+          ) : null}
           {currentWeek ? (
             <line
               x1={x(currentWeek)}
@@ -115,17 +149,62 @@ export function SurvivalChart({
 
           {bandPath ? <path d={bandPath} fill="var(--accent)" opacity={0.13} /> : null}
 
-          {visible.map((s) => (
-            <path
-              key={s.key}
-              d={path(s.curve)}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={s.dashed ? 1.6 : 2.2}
-              strokeDasharray={s.dashed ? "5 4" : undefined}
-              strokeLinejoin="round"
-            />
-          ))}
+          {visible.map((s) => {
+            if (s.split && currentWeek) {
+              const settled = s.curve.filter((p) => p.week <= currentWeek);
+              const ahead = s.curve.filter((p) => p.week >= currentWeek);
+              const dead = (s.curve as Settled[]).find(
+                (p) => p.outcome === "lost" || p.outcome === "tied",
+              );
+              return (
+                <g key={s.key}>
+                  {settled.length > 1 ? (
+                    <path
+                      d={path(dead ? settled.filter((p) => p.week <= dead.week) : settled)}
+                      fill="none"
+                      stroke={s.color}
+                      strokeWidth={2.4}
+                      strokeLinejoin="round"
+                    />
+                  ) : null}
+                  {dead ? (
+                    <g>
+                      <circle cx={x(dead.week)} cy={y(min)} r={4} fill="var(--critical)" />
+                      <line
+                        x1={x(dead.week) - 5}
+                        x2={x(dead.week) + 5}
+                        y1={y(min)}
+                        y2={y(min)}
+                        stroke="var(--critical)"
+                        strokeWidth={2}
+                      />
+                    </g>
+                  ) : ahead.length > 1 ? (
+                    <path
+                      d={path(ahead)}
+                      fill="none"
+                      stroke={s.color}
+                      strokeWidth={1.8}
+                      strokeDasharray="5 4"
+                      opacity={0.8}
+                      strokeLinejoin="round"
+                    />
+                  ) : null}
+                </g>
+              );
+            }
+            return (
+              <path
+                key={s.key}
+                d={path(s.curve)}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={s.dashed ? 1.6 : 2.2}
+                strokeDasharray={s.dashed ? "5 4" : undefined}
+                strokeLinejoin="round"
+              />
+            );
+          })}
 
           {hoverWeek ? (
             <g pointerEvents="none">
@@ -169,7 +248,11 @@ export function SurvivalChart({
               <div key={s.key} className="chart-tooltip-row">
                 <span className="dot" style={{ background: s.color }} aria-hidden="true" />
                 <span className="chart-tooltip-label">{s.label}</span>
-                <span className="num">{pct(s.curve[hoverWeek - 1]?.cumulative ?? 0, 2)}</span>
+                <span className="num">
+                  {(s.curve[hoverWeek - 1] as Settled | undefined)?.outcome
+                    ? (s.curve[hoverWeek - 1] as Settled).outcome
+                    : pct(s.curve[hoverWeek - 1]?.cumulative ?? 0, 2)}
+                </span>
               </div>
             ))}
           </div>
@@ -198,7 +281,7 @@ export function SurvivalChart({
             </button>
           );
         })}
-        {band ? <span className="sub">Shaded band = ±1σ uncertainty</span> : null}
+        {bandPath ? <span className="sub">Shaded band = ±1σ uncertainty (forecast only)</span> : null}
       </div>
     </div>
   );

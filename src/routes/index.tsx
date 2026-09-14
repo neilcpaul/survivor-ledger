@@ -9,7 +9,15 @@ import { NewsTicker } from "@/components/news";
 import { fetchNews } from "@/lib/news";
 import { OPEN_WIZARD_EVENT } from "@/components/WelcomeWizard";
 import { usePlanCurves, useSurvivor } from "@/lib/survivor-store";
-import { finalOdds, oddsAsOneInN, pct, ppDelta, survivalCurve } from "@/lib/survivor";
+import {
+  finalOdds,
+  forwardOdds,
+  oddsAsOneInN,
+  pct,
+  ppDelta,
+  survivalCurve,
+} from "@/lib/survivor";
+import { WeekRecap } from "@/components/WeekRecap";
 
 
 export const Route = createFileRoute("/")({
@@ -39,6 +47,7 @@ const ENTRY_COLORS = ["var(--scenario)", "var(--optimal)", "var(--proposed)", "v
 function SeasonOverview() {
   const {
     slots,
+    plan,
     teamsById,
     loading,
     currentWeek,
@@ -50,6 +59,7 @@ function SeasonOverview() {
     originalLocked,
     resetOriginal,
     otherEntryPlans,
+    status,
   } = useSurvivor();
   const curves = usePlanCurves();
   const openWizard = useCallback(
@@ -75,6 +85,19 @@ function SeasonOverview() {
     .filter((p) => p.winProb != null)
     .sort((a, b) => (a.winProb ?? 1) - (b.winProb ?? 1))[0];
   const hasPicks = curves.mine.some((p) => p.winProb != null);
+
+  // Odds are rebased to what is still to come; the ex-ante number stays visible
+  // as a secondary line so the two are never confused.
+  const ahead = forwardOdds(slots, plan, currentWeek);
+  const eliminated = status.state === "eliminated";
+  const statusLine =
+    status.state === "eliminated"
+      ? `Eliminated in Week ${status.week} · ${teamsById.get(status.teamId)?.abbr ?? "—"} ${
+          status.outcome === "tied" ? "tied" : "lost to"
+        } ${teamsById.get(status.opponentId ?? "")?.abbr ?? "—"}`
+      : status.state === "alive"
+        ? `Alive · ${status.survived} of ${status.settled} pick${status.settled === 1 ? "" : "s"} survived`
+        : "Not started · no results yet";
 
 
   return (
@@ -104,9 +127,23 @@ function SeasonOverview() {
 
           <section className="stat-grid" style={{ marginBottom: 16 }}>
             <StatCard
-              label="Season survival odds"
-              value={hasPicks ? pct(mine, 2) : "—"}
-              sub={hasPicks ? oddsAsOneInN(mine) : "Make your first pick"}
+              label={eliminated ? "Entry status" : `Odds from here · Weeks ${currentWeek}–18`}
+              value={eliminated ? "Eliminated" : hasPicks ? pct(ahead, 2) : "—"}
+              sub={
+                eliminated ? (
+                  statusLine
+                ) : hasPicks ? (
+                  <>
+                    {oddsAsOneInN(ahead)}
+                    <div style={{ marginTop: 4 }} className="sub">
+                      Pre-season odds were {pct(mine, 2)}
+                    </div>
+                    <div className="sub">{statusLine}</div>
+                  </>
+                ) : (
+                  "Make your first pick"
+                )
+              }
               tone="accent"
               onClick={!hasPicks ? openWizard : undefined}
             />
@@ -169,6 +206,8 @@ function SeasonOverview() {
             />
           </section>
 
+          <WeekRecap />
+
           <NewsTicker articles={news ?? []} />
 
           <section className="card" style={{ marginBottom: 16 }}>
@@ -188,9 +227,26 @@ function SeasonOverview() {
             </div>
             <SurvivalChart
               currentWeek={currentWeek}
-              band={curves.mine}
+              band={curves.realised}
               series={[
-                { key: "mine", label: "Current plan", color: "var(--accent)", curve: curves.mine },
+                {
+                  key: "mine",
+                  label: "Current plan",
+                  color: "var(--accent)",
+                  curve: curves.realised,
+                  split: true,
+                },
+                ...(currentWeek > 1
+                  ? [
+                      {
+                        key: "exante",
+                        label: "Pre-season forecast",
+                        color: "var(--ink-faint)",
+                        curve: curves.mine,
+                        dashed: true,
+                      },
+                    ]
+                  : []),
                 ...(originalLocked
                   ? [
                       {
@@ -243,7 +299,7 @@ function SeasonOverview() {
               </Link>
             </div>
             <WeekLedgerTable
-              curve={curves.mine}
+              curve={curves.realised}
               originalCurve={curves.original}
               originalLocked={originalLocked}
               editedWeeks={editedWeeks}

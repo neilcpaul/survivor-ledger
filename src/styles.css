@@ -1444,3 +1444,69 @@ button.badge.legend-toggle {
     animation: none;
   }
 }
+
+/* ---------- time-aware ledger / result treatments ---------- */
+.grid tr.ledger-past > * {
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+}
+.grid tr.ledger-past .muted-cell {
+  opacity: 0.6;
+}
+.grid tr.ledger-now > * {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.grid tr.ledger-edited > * {
+  background: var(--surface-2);
+}
+.now-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: 6px;
+}
+.result-note {
+  font-weight: 600;
+}
+.pill.live {
+  color: var(--critical);
+  border-color: color-mix(in srgb, var(--critical) 45%, transparent);
+}
+.pill .dot.pulse {
+  background: currentColor;
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pill .dot.pulse { animation: none; }
+}
+.score-win {
+  font-weight: 700;
+  color: var(--text-1);
+}
+.score-lose {
+  color: var(--text-2);
+  opacity: 0.75;
+}
+.fixture-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 14px 0 6px;
+}
+.livebar {
+  display: flex;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  min-width: 84px;
+  background: var(--surface-2);
+}
+.livebar > span:first-child { background: var(--accent); }
+.livebar > span:last-child { background: var(--scenario); }

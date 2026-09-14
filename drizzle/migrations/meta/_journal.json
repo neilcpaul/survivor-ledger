@@ -92,6 +92,13 @@
       "when": 1788796578503,
       "tag": "0012_create_site_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789377755858,
+      "tag": "0013_game_results_and_season_state",
+      "breakpoints": true
     }
   ]
 }

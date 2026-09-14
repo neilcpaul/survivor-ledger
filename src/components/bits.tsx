@@ -143,3 +143,32 @@ export function StatusPill({ status }: { status: string | null | undefined }) {
     </span>
   );
 }
+
+/**
+ * Outcome and game-state pills. "Final" is deliberately neutral — --good and
+ * --critical are reserved for the user's own won/lost picks, where the colour
+ * carries real meaning.
+ */
+export function ResultPill({ outcome }: { outcome: "won" | "lost" | "tied" }) {
+  const tier = outcome === "won" ? "good" : outcome === "lost" ? "critical" : "caution";
+  return (
+    <span className={`pill ${tier}`}>
+      <span className="dot" style={{ background: "currentColor" }} aria-hidden="true" />
+      {outcome}
+    </span>
+  );
+}
+
+export function GamePill({ state, detail }: { state: string; detail?: string | null | undefined }) {
+  if (state === "final") return <span className="pill neutral">{detail || "Final"}</span>;
+  if (state === "live")
+    return (
+      <span className="pill live">
+        <span className="dot pulse" aria-hidden="true" />
+        LIVE
+      </span>
+    );
+  if (state === "likely-live") return <span className="pill neutral">Likely in progress</span>;
+  if (state === "awaiting-final") return <span className="pill neutral">Awaiting final</span>;
+  return null;
+}
