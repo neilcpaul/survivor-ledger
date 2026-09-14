@@ -162,7 +162,7 @@ export function WeekLedgerTable({
                         <ResultPill outcome={outcome} />
                         {note ? <span className="sub result-note">{note}</span> : null}
                       </span>
-                    ) : isNow && state !== "pre" ? (
+                    ) : game && state !== "pre" ? (
                       <span className="ledger-game-result">
                         {mineScore != null && theirScore != null ? (
                           <span className="num ledger-score" aria-label={`${team?.abbr ?? "Pick"} ${mineScore}, ${opp?.abbr ?? "opponent"} ${theirScore}`}>
