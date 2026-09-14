@@ -14,9 +14,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { getOptimalPlan, logUserActivity, type ActivityDetail } from "./access.functions";
 import {
   buildSlots,
+  deriveCurrentWeek,
+  entryStatus,
+  gameState,
   greedyPlan,
+  isLiveState,
   survivalCurve,
+  timeAwareCurve,
   WEEKS,
+  type EntryStatus,
   type Game,
   type Plan,
   type Team,
@@ -46,12 +52,21 @@ async function fetchGames(): Promise<Game[]> {
   const { data, error } = await supabase
     .from("games")
     .select(
-      "id, week, home_team_id, away_team_id, kickoff_at, venue_name, venue_city, venue_state, venue_indoor, broadcast, weather_condition, weather_temp_f, home_win_prob, away_win_prob, updated_at",
+      "id, week, home_team_id, away_team_id, kickoff_at, venue_name, venue_city, venue_state, venue_indoor, broadcast, weather_condition, weather_temp_f, home_win_prob, away_win_prob, home_score, away_score, winner_team_id, status_state, status_completed, status_detail, period, display_clock, home_linescores, away_linescores, live_home_win_prob, live_away_win_prob, situation, updated_at",
     )
     .eq("season_type", 2)
     .order("kickoff_at");
   if (error) throw error;
-  return (data ?? []) as Game[];
+  return (data ?? []) as unknown as Game[];
+}
+
+async function fetchSeasonState() {
+  const { data } = await supabase
+    .from("season_state")
+    .select("current_week, season_type, last_synced_at")
+    .eq("id", "nfl")
+    .maybeSingle();
+  return data ?? null;
 }
 
 // sync_state holds internal job errors, so only admins can read it. Everyone
@@ -237,6 +252,12 @@ type Ctx = {
   editedWeeks: Set<number>;
   optimal: Plan;
   currentWeek: number;
+  /** (week:teamId) -> the game that pick is riding on. */
+  gamesByWeekTeam: Map<string, Game>;
+  /** Alive / eliminated / not started, derived from settled results. */
+  status: EntryStatus;
+  /** True while any game in the current week is live (or likely live). */
+  anyLive: boolean;
   tier: "basic" | "analysis";
   isAnalysis: boolean;
   isAdmin: boolean;
@@ -335,12 +356,28 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
 
   /* ---------------- reference data ---------------- */
   const teamsQ = useQuery({ queryKey: ["teams"], queryFn: fetchTeams, staleTime: 5 * 60_000 });
-  const gamesQ = useQuery({ queryKey: ["games"], queryFn: fetchGames, staleTime: 60_000 });
+  // Live scores on a five-minute delay feel broken, so the poll drops to 30s
+  // while anything is in progress and reverts once nothing is.
+  const gamesQ = useQuery({
+    queryKey: ["games"],
+    queryFn: fetchGames,
+    staleTime: 30_000,
+    refetchInterval: (q) => {
+      const rows = (q.state.data ?? []) as Game[];
+      const live = rows.some((g) => isLiveState(gameState(g)));
+      return live ? 30_000 : 5 * 60_000;
+    },
+  });
   const syncQ = useQuery({
     queryKey: ["sync-state"],
     queryFn: fetchSyncState,
     enabled: !!session?.user,
     refetchInterval: 60_000,
+  });
+  const seasonQ = useQuery({
+    queryKey: ["season-state"],
+    queryFn: fetchSeasonState,
+    staleTime: 60_000,
   });
 
   // Public flag: whether first-time visitors are offered the welcome wizard.
@@ -378,13 +415,32 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     [isAnalysis, optimalQ.data],
   );
 
-  const currentWeek = useMemo(() => {
-    const nowIso = new Date(now).toISOString();
-    const upcoming = games
-      .filter((g) => g.kickoff_at && g.kickoff_at >= nowIso)
-      .sort((a, b) => (a.kickoff_at! < b.kickoff_at! ? -1 : 1))[0];
-    return upcoming?.week ?? (games.length ? 18 : 1);
-  }, [games, now]);
+  // The season clock: one server-side notion of "now", validated against
+  // results locally so the week never rolls over while a game is still live.
+  const derivedWeek = useMemo(() => deriveCurrentWeek(games), [games]);
+  const currentWeek = derivedWeek ?? seasonQ.data?.current_week ?? 1;
+
+  // (week:teamId) -> game, so any surface can resolve a pick to its result.
+  const gamesByWeekTeam = useMemo(() => {
+    const m = new Map<string, Game>();
+    for (const g of games) {
+      if (g.home_team_id) m.set(`${g.week}:${g.home_team_id}`, g);
+      if (g.away_team_id) m.set(`${g.week}:${g.away_team_id}`, g);
+    }
+    return m;
+  }, [games]);
+
+  const anyLive = useMemo(
+    () => games.some((g) => g.week === currentWeek && isLiveState(gameState(g, now))),
+    [games, currentWeek, now],
+  );
+
+  const planStatus = useMemo(
+    () => entryStatus(plan, gamesByWeekTeam),
+    [plan, gamesByWeekTeam],
+  );
+
+
 
   /* ---------------- entries ---------------- */
   const entriesQ = useQuery({
@@ -812,6 +868,9 @@ export function SurvivorProvider({ children }: { children: ReactNode }) {
     editedWeeks,
     optimal,
     currentWeek,
+    gamesByWeekTeam,
+    status: planStatus,
+    anyLive,
     tier,
     isAnalysis,
     isAdmin,
@@ -841,13 +900,16 @@ export function useSurvivor() {
 }
 
 export function usePlanCurves() {
-  const { slots, plan, originalPlan, optimal } = useSurvivor();
+  const { slots, plan, originalPlan, optimal, gamesByWeekTeam, currentWeek } = useSurvivor();
   return useMemo(
     () => ({
+      // `mine` is ex-ante (every week forecast) and stays the basis for the
+      // pre-season figure; `realised` walks the settled path then forecasts.
       mine: survivalCurve(slots, plan),
+      realised: timeAwareCurve(slots, plan, gamesByWeekTeam, currentWeek),
       original: survivalCurve(slots, originalPlan),
       optimal: survivalCurve(slots, optimal),
     }),
-    [slots, plan, originalPlan, optimal],
+    [slots, plan, originalPlan, optimal, gamesByWeekTeam, currentWeek],
   );
 }

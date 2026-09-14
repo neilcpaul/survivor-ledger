@@ -1444,3 +1444,95 @@ button.badge.legend-toggle {
     animation: none;
   }
 }
+
+/* ---------- time-aware ledger / result treatments ---------- */
+.grid tr.ledger-past > * {
+  color: var(--text-2);
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+}
+.grid tr.ledger-past .muted-cell {
+  opacity: 0.6;
+}
+.grid tr.ledger-now > * {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.grid tr.ledger-edited > * {
+  background: var(--surface-2);
+}
+.now-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: 6px;
+}
+.result-note {
+  font-weight: 600;
+}
+.pill.live {
+  color: var(--critical);
+  border-color: color-mix(in srgb, var(--critical) 45%, transparent);
+}
+.pill .dot.pulse {
+  background: currentColor;
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pill .dot.pulse { animation: none; }
+}
+.score-win {
+  font-weight: 700;
+  color: var(--text-1);
+}
+.score-lose {
+  color: var(--text-2);
+  opacity: 0.75;
+}
+.fixture-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 14px 0 6px;
+}
+.livebar {
+  display: flex;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  min-width: 84px;
+  background: var(--surface-2);
+}
+.livebar > span:first-child { background: var(--accent); }
+.livebar > span:last-child { background: var(--scenario); }
+
+/* ---------- expanded fixture summary ---------- */
+.summary-stack { display: grid; gap: 18px; margin-bottom: 18px; }
+.summary-stack h4 {
+  font-family: var(--font-display, inherit);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin: 0 0 6px;
+}
+.grid.compact th, .grid.compact td { padding: 4px 8px; font-size: 13px; }
+.scoring-timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.scoring-timeline li {
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+@media (max-width: 640px) {
+  .scoring-timeline li { grid-template-columns: 1fr; gap: 2px; }
+}
+.leader-item { min-width: 160px; }

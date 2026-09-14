@@ -18,6 +18,7 @@ import { Route as HeatmapRouteImport } from './routes/heatmap'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as TeamsTeamIdRouteImport } from './routes/teams.$teamId'
+import { Route as ApiPublicEspnSummaryRouteImport } from './routes/api/public/espn-summary'
 import { Route as ApiPublicEspnSyncRouteImport } from './routes/api/public/espn-sync'
 
 const IndexRoute = IndexRouteImport.update({
@@ -65,6 +66,11 @@ const TeamsTeamIdRoute = TeamsTeamIdRouteImport.update({
   path: '/teams/$teamId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicEspnSummaryRoute = ApiPublicEspnSummaryRouteImport.update({
+  id: '/api/public/espn-summary',
+  path: '/api/public/espn-summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicEspnSyncRoute = ApiPublicEspnSyncRouteImport.update({
   id: '/api/public/espn-sync',
   path: '/api/public/espn-sync',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof InventoryRoute
   '/news': typeof NewsRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/api/public/espn-summary': typeof ApiPublicEspnSummaryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/inventory': typeof InventoryRoute
   '/news': typeof NewsRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/api/public/espn-summary': typeof ApiPublicEspnSummaryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/inventory': typeof InventoryRoute
   '/news': typeof NewsRoute
   '/teams/$teamId': typeof TeamsTeamIdRoute
+  '/api/public/espn-summary': typeof ApiPublicEspnSummaryRoute
   '/api/public/espn-sync': typeof ApiPublicEspnSyncRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/news'
     | '/teams/$teamId'
+    | '/api/public/espn-summary'
     | '/api/public/espn-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/news'
     | '/teams/$teamId'
+    | '/api/public/espn-summary'
     | '/api/public/espn-sync'
   id:
     | '__root__'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/news'
     | '/teams/$teamId'
+    | '/api/public/espn-summary'
     | '/api/public/espn-sync'
   fileRoutesById: FileRoutesById
 }
@@ -157,6 +169,7 @@ export interface RootRouteChildren {
   InventoryRoute: typeof InventoryRoute
   NewsRoute: typeof NewsRoute
   TeamsTeamIdRoute: typeof TeamsTeamIdRoute
+  ApiPublicEspnSummaryRoute: typeof ApiPublicEspnSummaryRoute
   ApiPublicEspnSyncRoute: typeof ApiPublicEspnSyncRoute
 }
 
@@ -225,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeamsTeamIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/espn-summary': {
+      id: '/api/public/espn-summary'
+      path: '/api/public/espn-summary'
+      fullPath: '/api/public/espn-summary'
+      preLoaderRoute: typeof ApiPublicEspnSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/espn-sync': {
       id: '/api/public/espn-sync'
       path: '/api/public/espn-sync'
@@ -245,6 +265,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryRoute: InventoryRoute,
   NewsRoute: NewsRoute,
   TeamsTeamIdRoute: TeamsTeamIdRoute,
+  ApiPublicEspnSummaryRoute: ApiPublicEspnSummaryRoute,
   ApiPublicEspnSyncRoute: ApiPublicEspnSyncRoute,
 }
 export const routeTree = rootRouteImport

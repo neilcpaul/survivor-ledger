@@ -97,8 +97,36 @@ type GameRow = {
   weather_temp_f: number | null;
   home_win_prob: number | null;
   away_win_prob: number | null;
+  home_score: number | null;
+  away_score: number | null;
+  winner_team_id: string | null;
+  status_state: string | null;
+  status_completed: boolean;
+  status_detail: string | null;
+  period: number | null;
+  display_clock: string | null;
+  home_linescores: Json;
+  away_linescores: Json;
+  live_home_win_prob: number | null;
+  live_away_win_prob: number | null;
+  situation: Json;
   updated_at: string;
 };
+
+function num(v: unknown): number | null {
+  const n = typeof v === "string" ? Number(v) : typeof v === "number" ? v : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+function linescores(side: Json): Json {
+  const rows = (side?.linescores ?? [])
+    .map((l: Json, i: number) => ({
+      period: Number(l?.period ?? i + 1),
+      display: String(l?.displayValue ?? l?.value ?? ""),
+    }))
+    .filter((l: Json) => l.display !== "");
+  return rows.length ? rows : null;
+}
 
 async function syncSchedule(db: SupabaseClient, year: number, weeks: number[]) {
   const all: GameRow[] = [];
@@ -108,10 +136,26 @@ async function syncSchedule(db: SupabaseClient, year: number, weeks: number[]) {
       const comp = ev?.competitions?.[0];
       if (!comp) continue;
       const competitors = comp.competitors ?? [];
+      // competitors[] order is not home/away — always read homeAway.
       const home = competitors.find((c: Json) => c.homeAway === "home");
       const away = competitors.find((c: Json) => c.homeAway === "away");
       const w = ev?.weather ?? {};
       const temp = w.temperature ?? w.highTemperature;
+      const status = comp?.status ?? ev?.status ?? {};
+      const type = status?.type ?? {};
+      const completed = type?.completed === true;
+      // `winner` is absent (not false) before a game is played.
+      const homeWinner = typeof home?.winner === "boolean" ? home.winner : null;
+      const awayWinner = typeof away?.winner === "boolean" ? away.winner : null;
+      const winnerTeamId = !completed
+        ? null
+        : homeWinner === true
+          ? String(home?.team?.id ?? "")
+          : awayWinner === true
+            ? String(away?.team?.id ?? "")
+            : null; // both false on a completed game = tie
+      const situation = comp?.situation ?? null;
+      const liveProb = situation?.lastPlay?.probability ?? null;
       all.push({
         id: String(ev.id),
         week: Number(ev?.week?.number ?? week),
@@ -133,11 +177,69 @@ async function syncSchedule(db: SupabaseClient, year: number, weeks: number[]) {
         weather_temp_f: typeof temp === "number" ? Math.round(temp) : null,
         home_win_prob: null,
         away_win_prob: null,
+        home_score: num(home?.score),
+        away_score: num(away?.score),
+        winner_team_id: winnerTeamId || null,
+        status_state: type?.state ?? null,
+        status_completed: completed,
+        status_detail: type?.detail ?? type?.shortDetail ?? null,
+        period: num(status?.period),
+        display_clock: status?.displayClock ?? null,
+        home_linescores: linescores(home),
+        away_linescores: linescores(away),
+        live_home_win_prob:
+          liveProb?.homeWinPercentage != null ? Number(liveProb.homeWinPercentage) : null,
+        live_away_win_prob:
+          liveProb?.awayWinPercentage != null ? Number(liveProb.awayWinPercentage) : null,
+        situation: situation
+          ? {
+              downDistanceText: situation.downDistanceText ?? null,
+              isRedZone: situation.isRedZone ?? null,
+              possession: situation.possession != null ? String(situation.possession) : null,
+              lastPlay: situation.lastPlay?.text ?? null,
+            }
+          : null,
         updated_at: new Date().toISOString(),
       });
     }
   });
   return all;
+}
+
+/**
+ * The season clock, derived from data rather than the calendar: ESPN's own
+ * "current week" is validated against results, and the current week is the
+ * earliest week that is not yet fully complete.
+ */
+async function syncSeasonState(db: SupabaseClient, year: number, games: GameRow[]) {
+  const live = await getJson(`${SITE}/scoreboard`);
+  const espnWeek = num(live?.week?.number);
+  const seasonType = num(live?.season?.type) ?? 2;
+
+  const byWeek = new Map<number, GameRow[]>();
+  for (const g of games) {
+    if (!byWeek.has(g.week)) byWeek.set(g.week, []);
+    byWeek.get(g.week)!.push(g);
+  }
+  let derived: number | null = null;
+  for (let w = 1; w <= 18; w++) {
+    const rows = byWeek.get(w) ?? [];
+    if (!rows.length) continue;
+    if (!rows.every((g) => g.status_completed)) {
+      derived = w;
+      break;
+    }
+  }
+  const currentWeek = derived ?? (espnWeek && espnWeek >= 1 && espnWeek <= 18 ? espnWeek : 18);
+
+  await db.from("season_state").upsert({
+    id: "nfl",
+    current_week: currentWeek,
+    season_type: seasonType,
+    season_year: year,
+    last_synced_at: new Date().toISOString(),
+  });
+  return currentWeek;
 }
 
 function impliedFromMoneyline(ml: number | null | undefined): number | null {
@@ -283,15 +385,35 @@ async function runSync(scope: string) {
 
     const weeks = Array.from({ length: 18 }, (_, i) => i + 1);
     const games = await syncSchedule(db, year, weeks);
+
+    // A played game keeps the pre-game probability it was stored with — a
+    // post-hoc predictor call would silently rewrite history.
+    const { data: stored } = await db.from("games").select("id, home_win_prob, away_win_prob");
+    const prior = new Map<string, { h: number | null; a: number | null }>(
+      (stored ?? []).map((r: Json) => [
+        String(r.id),
+        { h: r.home_win_prob != null ? Number(r.home_win_prob) : null, a: r.away_win_prob != null ? Number(r.away_win_prob) : null },
+      ]),
+    );
+    for (const g of games) {
+      const p = prior.get(g.id);
+      if (g.status_completed && p?.h != null && p?.a != null) {
+        g.home_win_prob = p.h;
+        g.away_win_prob = p.a;
+      }
+    }
+
     if (scope !== "schedule-only") {
-      await syncPredictor(games);
-      await syncOddsFallback(games);
+      const needProb = games.filter((g) => g.home_win_prob == null || g.away_win_prob == null);
+      await syncPredictor(needProb);
+      await syncOddsFallback(needProb);
       summary.games_with_prob = games.filter((g) => g.home_win_prob != null).length;
     }
     for (let i = 0; i < games.length; i += 200) {
       await db.from("games").upsert(games.slice(i, i + 200), { onConflict: "id" });
     }
     summary.games = games.length;
+    summary.current_week = await syncSeasonState(db, year, games);
 
     summary.news = await syncNews(db);
 

@@ -10,6 +10,15 @@ export type Team = {
   logo_url: string | null;
 };
 
+export type LineScore = { period: number; display: string };
+
+export type GameSituation = {
+  downDistanceText?: string | null;
+  isRedZone?: boolean | null;
+  possession?: string | null;
+  lastPlay?: string | null;
+} | null;
+
 export type Game = {
   id: string;
   week: number;
@@ -25,8 +34,126 @@ export type Game = {
   weather_temp_f: number | null;
   home_win_prob: number | null;
   away_win_prob: number | null;
+  home_score: number | null;
+  away_score: number | null;
+  winner_team_id: string | null;
+  status_state: string | null;
+  status_completed: boolean | null;
+  status_detail: string | null;
+  period: number | null;
+  display_clock: string | null;
+  home_linescores: LineScore[] | null;
+  away_linescores: LineScore[] | null;
+  live_home_win_prob: number | null;
+  live_away_win_prob: number | null;
+  situation: GameSituation;
   updated_at: string | null;
 };
+
+/* ------------------------ live / played game state ------------------------ */
+
+export const LIVE_WINDOW_MS = 3.5 * 60 * 60 * 1000;
+
+export type GameState = "pre" | "live" | "likely-live" | "awaiting-final" | "final";
+
+/** Confirmed ESPN state always wins; the time window is only a fallback. */
+export function gameState(g: Game, nowMs = Date.now()): GameState {
+  if (g.status_completed) return "final";
+  if (g.status_state === "in") return "live";
+  if (g.status_state === "post") return "awaiting-final";
+  const kick = g.kickoff_at ? Date.parse(g.kickoff_at) : NaN;
+  if (Number.isFinite(kick) && nowMs >= kick) {
+    return nowMs <= kick + LIVE_WINDOW_MS ? "likely-live" : "awaiting-final";
+  }
+  return "pre";
+}
+
+export function isLiveState(s: GameState): boolean {
+  return s === "live" || s === "likely-live";
+}
+
+export type PickOutcome = "won" | "lost" | "tied";
+
+/** Result of a pick, or null while the game is unsettled. */
+export function pickOutcome(g: Game | undefined, teamId: string | undefined): PickOutcome | null {
+  if (!g || !teamId || !g.status_completed) return null;
+  if (!g.winner_team_id) return "tied"; // both competitors winner:false on a completed game
+  return g.winner_team_id === teamId ? "won" : "lost";
+}
+
+export type EntryStatus =
+  | { state: "not-started" }
+  | { state: "alive"; survived: number; settled: number }
+  | { state: "eliminated"; week: number; outcome: PickOutcome; teamId: string; opponentId: string | null };
+
+export function entryStatus(
+  plan: Plan,
+  gamesByWeekTeam: Map<string, Game>,
+): EntryStatus {
+  let settled = 0;
+  for (const week of WEEKS) {
+    const teamId = plan[week];
+    if (!teamId) continue;
+    const g = gamesByWeekTeam.get(`${week}:${teamId}`);
+    const outcome = pickOutcome(g, teamId);
+    if (!outcome) continue;
+    settled++;
+    if (outcome !== "won") {
+      const opponentId =
+        g!.home_team_id === teamId ? g!.away_team_id : g!.home_team_id;
+      return { state: "eliminated", week, outcome, teamId, opponentId };
+    }
+  }
+  if (!settled) return { state: "not-started" };
+  return { state: "alive", survived: settled, settled };
+}
+
+/** Earliest week that is not yet fully complete — the season clock fallback. */
+export function deriveCurrentWeek(games: Game[]): number | null {
+  const byWeek = new Map<number, Game[]>();
+  for (const g of games) {
+    if (!byWeek.has(g.week)) byWeek.set(g.week, []);
+    byWeek.get(g.week)!.push(g);
+  }
+  for (const w of WEEKS) {
+    const rows = byWeek.get(w);
+    if (!rows?.length) continue;
+    if (!rows.every((g) => g.status_completed)) return w;
+  }
+  return byWeek.size ? 18 : null;
+}
+
+/** A short plain-language note when a result defied its pre-game probability. */
+export function upsetNote(
+  winProb: number | null | undefined,
+  outcome: PickOutcome | "win" | "loss" | null,
+  who = "",
+): string | null {
+  if (winProb == null || !outcome) return null;
+  const won = outcome === "won" || outcome === "win";
+  const lost = outcome === "lost" || outcome === "loss";
+  const p = `${Math.round(winProb * 100)}%`;
+  const subject = who ? `${who} ` : "";
+  if (won && winProb < 0.45) return `${subject}won as a ${p} underdog`;
+  if (lost && winProb > 0.7) return `${subject}lost as a ${p} favourite`;
+  return null;
+}
+
+/** Quieter marker: a win that was in doubt late, or by one score. */
+export function closeCallNote(g: Game | undefined, teamId: string | undefined): string | null {
+  if (!g || !teamId || !g.status_completed || g.winner_team_id !== teamId) return null;
+  const isHome = g.home_team_id === teamId;
+  const mine = isHome ? g.home_score : g.away_score;
+  const theirs = isHome ? g.away_score : g.home_score;
+  if (mine == null || theirs == null) return null;
+  if (mine - theirs <= 8) return "survived a scare";
+  const mineLines = (isHome ? g.home_linescores : g.away_linescores) ?? [];
+  const theirLines = (isHome ? g.away_linescores : g.home_linescores) ?? [];
+  const sum = (rows: LineScore[]) =>
+    rows.slice(0, 3).reduce((a, r) => a + (Number(r.display) || 0), 0);
+  if (mineLines.length >= 3 && sum(mineLines) < sum(theirLines)) return "survived a scare";
+  return null;
+}
 
 /** One "team plays this week" opportunity. */
 export type Slot = {
@@ -323,4 +450,74 @@ export function eliminationWeekStats(curve: CurvePoint[]): { mean: number; sd: n
   const mean = dist.reduce((a, d) => a + d.week * d.p, 0) / mass;
   const varc = dist.reduce((a, d) => a + d.p * (d.week - mean) ** 2, 0) / mass;
   return { mean, sd: Math.sqrt(Math.max(0, varc)) };
+}
+
+/* --------------------- time-aware (settled + forecast) --------------------- */
+
+export type TimeAwarePoint = CurvePoint & {
+  settled: boolean;
+  outcome: PickOutcome | null;
+};
+
+/**
+ * The path actually walked so far, continued by the forecast from the current
+ * week on. Past weeks carry no uncertainty: a survived week resolves to 1.0 and
+ * an elimination terminates the line at 0.
+ */
+export function timeAwareCurve(
+  slots: Map<number, Map<string, Slot>>,
+  plan: Plan,
+  gamesByWeekTeam: Map<string, Game>,
+  currentWeek: number,
+): TimeAwarePoint[] {
+  let cumulative = 1;
+  let varianceSum = 0;
+  let dead = false;
+  return WEEKS.map((week) => {
+    const teamId = plan[week];
+    const slot = teamId ? slots.get(week)?.get(teamId) : undefined;
+    const p = slot?.winProb ?? null;
+    const game = teamId ? gamesByWeekTeam.get(`${week}:${teamId}`) : undefined;
+    const outcome = pickOutcome(game, teamId);
+    const settled = week < currentWeek || outcome != null;
+
+    if (settled) {
+      if (outcome && outcome !== "won") dead = true;
+      cumulative = dead ? 0 : cumulative;
+    } else if (!dead && p != null && p > 0) {
+      cumulative *= p;
+      varianceSum += (1 - p) / p;
+    }
+
+    return {
+      week,
+      teamId,
+      opponentId: slot?.opponentId ?? null,
+      winProb: p,
+      cumulative,
+      sd: settled ? 0 : cumulative * Math.sqrt(varianceSum) * 0.5,
+      settled,
+      outcome,
+    };
+  });
+}
+
+/** Probability of surviving weeks `from`..18 given the entry is alive now. */
+export function forwardOdds(
+  slots: Map<number, Map<string, Slot>>,
+  plan: Plan,
+  from: number,
+  gamesByWeekTeam?: Map<string, Game>,
+): number {
+  let p = 1;
+  for (const week of WEEKS) {
+    if (week < from) continue;
+    const teamId = plan[week];
+    if (!teamId) continue;
+    // A pick already settled carries no remaining risk.
+    if (gamesByWeekTeam && pickOutcome(gamesByWeekTeam.get(`${week}:${teamId}`), teamId)) continue;
+    const slot = slots.get(week)?.get(teamId);
+    if (slot) p *= slot.winProb;
+  }
+  return p;
 }

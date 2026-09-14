@@ -564,6 +564,7 @@ function EntryBlock({
               curve={curves.mine}
               originalCurve={curves.original}
               originalLocked={picksQ.data?.originalLocked ?? false}
+              readOnly
             />
           </div>
         )

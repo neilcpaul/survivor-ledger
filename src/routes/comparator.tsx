@@ -147,9 +147,28 @@ function Comparator() {
 
   const basePlan = useMemo<Plan>(() => {
     if (strategy == null) return {};
-    if (strategy === "max") return optimal;
-    return solverQ.data ?? {};
-  }, [strategy, optimal, solverQ.data]);
+    const solved = strategy === "max" ? optimal : (solverQ.data ?? {});
+    // Weeks already played cannot be re-solved, and the teams they used are
+    // spent for the rest of the season.
+    const next: Plan = { ...solved };
+    const spent = new Set<string>();
+    for (const w of WEEKS) {
+      if (w >= currentWeek) continue;
+      const actual = plan[w];
+      if (actual) {
+        next[w] = actual;
+        spent.add(actual);
+      } else {
+        delete next[w];
+      }
+    }
+    for (const w of WEEKS) {
+      if (w < currentWeek) continue;
+      const t = next[w];
+      if (t && spent.has(t)) delete next[w];
+    }
+    return next;
+  }, [strategy, optimal, solverQ.data, plan, currentWeek]);
 
   const proposed = useMemo<Plan>(() => {
     if (strategy == null) return {};

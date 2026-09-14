@@ -76,15 +76,27 @@ export type Database = {
       }
       games: {
         Row: {
+          away_linescores: Json | null
+          away_score: number | null
           away_team_id: string | null
           away_win_prob: number | null
           broadcast: string | null
+          display_clock: string | null
+          home_linescores: Json | null
+          home_score: number | null
           home_team_id: string | null
           home_win_prob: number | null
           id: string
           kickoff_at: string | null
+          live_away_win_prob: number | null
+          live_home_win_prob: number | null
+          period: number | null
           season_type: number
           season_year: number
+          situation: Json | null
+          status_completed: boolean
+          status_detail: string | null
+          status_state: string | null
           updated_at: string
           venue_city: string | null
           venue_indoor: boolean | null
@@ -93,17 +105,30 @@ export type Database = {
           weather_condition: string | null
           weather_temp_f: number | null
           week: number
+          winner_team_id: string | null
         }
         Insert: {
+          away_linescores?: Json | null
+          away_score?: number | null
           away_team_id?: string | null
           away_win_prob?: number | null
           broadcast?: string | null
+          display_clock?: string | null
+          home_linescores?: Json | null
+          home_score?: number | null
           home_team_id?: string | null
           home_win_prob?: number | null
           id: string
           kickoff_at?: string | null
+          live_away_win_prob?: number | null
+          live_home_win_prob?: number | null
+          period?: number | null
           season_type?: number
           season_year: number
+          situation?: Json | null
+          status_completed?: boolean
+          status_detail?: string | null
+          status_state?: string | null
           updated_at?: string
           venue_city?: string | null
           venue_indoor?: boolean | null
@@ -112,17 +137,30 @@ export type Database = {
           weather_condition?: string | null
           weather_temp_f?: number | null
           week: number
+          winner_team_id?: string | null
         }
         Update: {
+          away_linescores?: Json | null
+          away_score?: number | null
           away_team_id?: string | null
           away_win_prob?: number | null
           broadcast?: string | null
+          display_clock?: string | null
+          home_linescores?: Json | null
+          home_score?: number | null
           home_team_id?: string | null
           home_win_prob?: number | null
           id?: string
           kickoff_at?: string | null
+          live_away_win_prob?: number | null
+          live_home_win_prob?: number | null
+          period?: number | null
           season_type?: number
           season_year?: number
+          situation?: Json | null
+          status_completed?: boolean
+          status_detail?: string | null
+          status_state?: string | null
           updated_at?: string
           venue_city?: string | null
           venue_indoor?: boolean | null
@@ -131,6 +169,7 @@ export type Database = {
           weather_condition?: string | null
           weather_temp_f?: number | null
           week?: number
+          winner_team_id?: string | null
         }
         Relationships: [
           {
@@ -325,6 +364,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      season_state: {
+        Row: {
+          current_week: number
+          id: string
+          last_synced_at: string
+          season_type: number
+          season_year: number | null
+        }
+        Insert: {
+          current_week?: number
+          id?: string
+          last_synced_at?: string
+          season_type?: number
+          season_year?: number | null
+        }
+        Update: {
+          current_week?: number
+          id?: string
+          last_synced_at?: string
+          season_type?: number
+          season_year?: number | null
+        }
+        Relationships: []
       }
       site_settings: {
         Row: {

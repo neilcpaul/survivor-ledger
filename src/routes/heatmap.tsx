@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Empty } from "@/components/bits";
 import { useSurvivor } from "@/lib/survivor-store";
-import { pct, seqColor, WEEKS } from "@/lib/survivor";
+import { pct, pickOutcome, seqColor, WEEKS } from "@/lib/survivor";
 
 export const Route = createFileRoute("/heatmap")({
   head: () => ({
@@ -27,7 +27,8 @@ export const Route = createFileRoute("/heatmap")({
 });
 
 function Heatmap() {
-  const { teams, slots, plan, teamsById, loading, setPick, currentWeek } = useSurvivor();
+  const { teams, slots, plan, teamsById, loading, setPick, currentWeek, gamesByWeekTeam } =
+    useSurvivor();
   const [conf, setConf] = useState<"all" | "AFC" | "NFC">("all");
 
   const usedWeekByTeam = useMemo(() => {
@@ -118,49 +119,68 @@ function Heatmap() {
                           {team.abbr}
                         </Link>
                       </th>
-                      {WEEKS.map((w) => {
-                        const slot = slots.get(w)?.get(team.id);
-                        const picked = plan[w] === team.id;
-                        const blockedByTeam = usedWeek != null && usedWeek !== w;
-                        if (!slot)
-                          return (
-                            <td key={w} style={{ textAlign: "center", color: "var(--ink-faint)" }}>
-                              —
-                            </td>
-                          );
-                        const opp = teamsById.get(slot.opponentId ?? "")?.abbr ?? "?";
-                        const label = `${team.abbr} week ${w} ${slot.isHome ? "vs" : "at"} ${opp}, ${pct(slot.winProb)} win probability${picked ? ", current pick" : ""}`;
-                        return (
-                          <td key={w} style={{ padding: 3, textAlign: "center" }}>
-                            <button
-                              type="button"
-                              onClick={() => setPick(w, picked ? undefined : team.id)}
-                              aria-label={label}
-                              title={label}
-                              style={{
-                                width: "100%",
-                                minWidth: 40,
-                                padding: "6px 2px",
-                                borderRadius: 6,
-                                cursor: "pointer",
-                                fontVariantNumeric: "tabular-nums",
-                                fontSize: 11,
-                                background: seqColor(slot.winProb),
-                                color: slot.winProb > 0.7 ? "var(--on-seq)" : "var(--ink)",
-                                border: picked
-                                  ? "2px solid var(--scenario)"
-                                  : w < currentWeek
-                                    ? "1px solid transparent"
-                                    : "1px solid var(--border)",
-                                opacity: blockedByTeam ? 0.4 : 1,
-                              }}
-                            >
-                              {picked ? "◆ " : ""}
-                              {(slot.winProb * 100).toFixed(0)}
-                            </button>
-                          </td>
-                        );
-                      })}
+                       {WEEKS.map((w) => {
+                         const slot = slots.get(w)?.get(team.id);
+                         const picked = plan[w] === team.id;
+                         const blockedByTeam = usedWeek != null && usedWeek !== w;
+                         if (!slot)
+                           return (
+                             <td key={w} style={{ textAlign: "center", color: "var(--ink-faint)" }}>
+                               —
+                             </td>
+                           );
+                         const opp = teamsById.get(slot.opponentId ?? "")?.abbr ?? "?";
+                         // Completed weeks are dimmed and carry a result glyph:
+                         // a stale pre-game number alone would mislead.
+                         const game = gamesByWeekTeam.get(`${w}:${team.id}`);
+                         const outcome = pickOutcome(game, team.id);
+                         const past = w < currentWeek;
+                         const glyph = outcome === "won" ? "✓" : outcome ? "✗" : "";
+                         const label = `${team.abbr} week ${w} ${slot.isHome ? "vs" : "at"} ${opp}, ${pct(slot.winProb)} win probability${outcome ? `, ${outcome}` : ""}${picked ? ", current pick" : ""}`;
+                         return (
+                           <td
+                             key={w}
+                             style={{
+                               padding: 3,
+                               textAlign: "center",
+                               background:
+                                 w === currentWeek
+                                   ? "color-mix(in srgb, var(--accent) 12%, transparent)"
+                                   : undefined,
+                             }}
+                           >
+                             <button
+                               type="button"
+                               onClick={() => setPick(w, picked ? undefined : team.id)}
+                               aria-label={label}
+                               title={label}
+                               style={{
+                                 width: "100%",
+                                 minWidth: 40,
+                                 padding: "6px 2px",
+                                 borderRadius: 6,
+                                 cursor: "pointer",
+                                 fontVariantNumeric: "tabular-nums",
+                                 fontSize: 11,
+                                 background: seqColor(slot.winProb),
+                                 color: slot.winProb > 0.7 ? "var(--on-seq)" : "var(--ink)",
+                                 border: picked
+                                   ? "2px solid var(--scenario)"
+                                   : w === currentWeek
+                                     ? "2px solid var(--accent)"
+                                     : past
+                                       ? "1px solid transparent"
+                                       : "1px solid var(--border)",
+                                 opacity: blockedByTeam ? 0.4 : past ? 0.55 : 1,
+                               }}
+                             >
+                               {picked ? "◆ " : ""}
+                               {glyph ? `${glyph} ` : ""}
+                               {(slot.winProb * 100).toFixed(0)}
+                             </button>
+                           </td>
+                         );
+                       })}
                     </tr>
                   );
                 })}
