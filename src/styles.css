@@ -1470,6 +1470,20 @@ button.badge.legend-toggle {
 .result-note {
   font-weight: 600;
 }
+.ledger-game-result {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+.ledger-score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--text-1);
+}
 .pill.live {
   color: var(--critical);
   border-color: color-mix(in srgb, var(--critical) 45%, transparent);
