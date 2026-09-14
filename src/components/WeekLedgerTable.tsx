@@ -151,17 +151,24 @@ export function WeekLedgerTable({
                   <td className="sub">{opp ? `${slot?.isHome ? "vs" : "@"} ${opp.abbr}` : "—"}</td>
                   <td>
                     {outcome ? (
-                      <span className="flex flex-wrap items-center gap-2">
-                        <ResultPill outcome={outcome} />
+                      <span className="ledger-game-result">
                         {mineScore != null && theirScore != null ? (
-                          <span className="num">
-                            {mineScore}–{theirScore}
+                          <span className="num ledger-score" aria-label={`${team?.abbr ?? "Pick"} ${mineScore}, ${opp?.abbr ?? "opponent"} ${theirScore}`}>
+                            <span className={outcome === "won" ? "score-win" : "score-lose"}>{mineScore}</span>
+                            <span aria-hidden="true">–</span>
+                            <span className={outcome === "won" ? "score-lose" : outcome === "lost" ? "score-win" : undefined}>{theirScore}</span>
                           </span>
                         ) : null}
+                        <ResultPill outcome={outcome} />
                         {note ? <span className="sub result-note">{note}</span> : null}
                       </span>
                     ) : isNow && state !== "pre" ? (
-                      <span className="flex items-center gap-2">
+                      <span className="ledger-game-result">
+                        {mineScore != null && theirScore != null ? (
+                          <span className="num ledger-score" aria-label={`${team?.abbr ?? "Pick"} ${mineScore}, ${opp?.abbr ?? "opponent"} ${theirScore}`}>
+                            {mineScore}–{theirScore}
+                          </span>
+                        ) : null}
                         <GamePill state={state} detail={game?.status_detail} />
                         {kickedOff ? <span className="sub">kicked off</span> : null}
                       </span>
