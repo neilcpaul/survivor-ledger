@@ -507,12 +507,16 @@ export function forwardOdds(
   slots: Map<number, Map<string, Slot>>,
   plan: Plan,
   from: number,
+  gamesByWeekTeam?: Map<string, Game>,
 ): number {
   let p = 1;
   for (const week of WEEKS) {
     if (week < from) continue;
     const teamId = plan[week];
-    const slot = teamId ? slots.get(week)?.get(teamId) : undefined;
+    if (!teamId) continue;
+    // A pick already settled carries no remaining risk.
+    if (gamesByWeekTeam && pickOutcome(gamesByWeekTeam.get(`${week}:${teamId}`), teamId)) continue;
+    const slot = slots.get(week)?.get(teamId);
     if (slot) p *= slot.winProb;
   }
   return p;

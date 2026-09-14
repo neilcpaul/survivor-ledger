@@ -60,6 +60,7 @@ function SeasonOverview() {
     resetOriginal,
     otherEntryPlans,
     status,
+    gamesByWeekTeam,
   } = useSurvivor();
   const curves = usePlanCurves();
   const openWizard = useCallback(
@@ -88,7 +89,7 @@ function SeasonOverview() {
 
   // Odds are rebased to what is still to come; the ex-ante number stays visible
   // as a secondary line so the two are never confused.
-  const ahead = forwardOdds(slots, plan, currentWeek);
+  const ahead = forwardOdds(slots, plan, currentWeek, gamesByWeekTeam);
   const eliminated = status.state === "eliminated";
   const statusLine =
     status.state === "eliminated"
