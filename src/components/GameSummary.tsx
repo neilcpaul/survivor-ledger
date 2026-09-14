@@ -162,7 +162,7 @@ export function GameSummary({ game }: { game: Game }) {
               </thead>
               <tbody>
                 {(data.teamStats[0]?.stats ?? []).map((s, i) => (
-                  <tr key={s.label}>
+                  <tr key={`${s.label}-${i}`}>
                     <th scope="row">{s.label}</th>
                     {data.teamStats.map((t) => (
                       <td key={(t.teamId ?? "") + i} className="num">
